@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Box, Text } from "ink";
-import { BORDER_COLOR, MUTED_COLOR, TEXT_COLOR, YOU_COLOR } from "./config.js";
+import { MUTED_COLOR, PROMPT_ACCENT_COLOR, TEXT_COLOR, YOU_COLOR } from "./config.js";
 import { wrapInputToVisualLines } from "./pi-prompt-utils.js";
 import { firstGrapheme } from "./text-segmentation.js";
 
@@ -8,15 +8,16 @@ type InputPanelProps = {
   input: string;
   cursorPos: number;
   width: number;
-  termRows: number;
+  /** Number of content rows reserved for the prompt (computed by App). */
+  maxVisibleLines: number;
   status: "idle" | "thinking";
 };
 
 const PADDING_X = 1;
+const LABEL = "\u2500 prompt ";
 
-export function InputPanel({ input, cursorPos, width, termRows, status }: InputPanelProps) {
+export function InputPanel({ input, cursorPos, width, maxVisibleLines, status }: InputPanelProps) {
   const contentWidth = Math.max(1, width - PADDING_X * 2);
-  const maxVisibleLines = Math.max(5, Math.floor(termRows * 0.3));
   const isIdle = status === "idle";
 
   const { visibleLines, scrollOffset, linesBelow } = useMemo(() => {
@@ -110,21 +111,26 @@ export function InputPanel({ input, cursorPos, width, termRows, status }: InputP
   }
 
   return (
-    <Box flexDirection="column" width={width} marginTop={1} overflow="hidden">
-      {/* Top border */}
+    <Box flexDirection="column" width={width} overflow="hidden">
+      {/* Top border — labelled and accented so the prompt region is clearly
+          separated from the transcript above it. */}
       <Box flexDirection="row" width={width} overflow="hidden">
         {scrollOffset > 0 ? (
           <>
-            <Text color={BORDER_COLOR}>{topBorder}</Text>
-            <Text color={BORDER_COLOR}>{"─".repeat(Math.max(0, width - topBorder.length))}</Text>
+            <Text color={PROMPT_ACCENT_COLOR}>{topBorder}</Text>
+            <Text color={PROMPT_ACCENT_COLOR}>{"─".repeat(Math.max(0, width - topBorder.length))}</Text>
           </>
         ) : (
-          <Text color={BORDER_COLOR}>{"─".repeat(width)}</Text>
+          <>
+            <Text color={PROMPT_ACCENT_COLOR} bold>{LABEL}</Text>
+            <Text color={PROMPT_ACCENT_COLOR}>{"─".repeat(Math.max(0, width - LABEL.length))}</Text>
+          </>
         )}
       </Box>
 
       {/* Content lines — empty input flows through the same pipeline so the box
-          never collapses. Height is fixed to reserve maximum prompt space. */}
+          never collapses. Height is the dynamic content height computed by App
+          (grows with input up to a small cap) so the prompt stays compact. */}
       <Box flexDirection="column" width={width} height={maxVisibleLines} overflow="hidden">
         {visibleLines.map((line, idx) => (
           <Box key={idx} flexDirection="row" width={width} overflow="hidden">
@@ -138,11 +144,11 @@ export function InputPanel({ input, cursorPos, width, termRows, status }: InputP
       <Box flexDirection="row" width={width} overflow="hidden">
         {linesBelow > 0 ? (
           <>
-            <Text color={BORDER_COLOR}>{bottomBorder}</Text>
-            <Text color={BORDER_COLOR}>{"─".repeat(Math.max(0, width - bottomBorder.length))}</Text>
+            <Text color={PROMPT_ACCENT_COLOR}>{bottomBorder}</Text>
+            <Text color={PROMPT_ACCENT_COLOR}>{"─".repeat(Math.max(0, width - bottomBorder.length))}</Text>
           </>
         ) : (
-          <Text color={BORDER_COLOR}>{"─".repeat(width)}</Text>
+          <Text color={PROMPT_ACCENT_COLOR}>{"─".repeat(width)}</Text>
         )}
       </Box>
     </Box>

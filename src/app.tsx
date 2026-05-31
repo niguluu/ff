@@ -5,12 +5,14 @@ import {
   ASSISTANT_COLOR,
   CONTEXT_BUDGET,
   MUTED_COLOR,
+  SEPARATOR_COLOR,
   STATUS_BUSY_COLOR,
   STATUS_SUCCESS_COLOR,
   SYSTEM_PROMPT,
   TEXT_COLOR,
   YOU_COLOR,
 } from "./config.js";
+import { wrapInputToVisualLines } from "./pi-prompt-utils.js";
 import { estimateTokens } from "./conversation.js";
 import {
   createSession,
@@ -65,13 +67,22 @@ export default function App() {
 
   const termRows = stdout.rows || 24;
   const termCols = stdout.columns || 80;
-  const promptMaxContentHeight = Math.max(5, Math.floor(termRows * 0.3));
-  // Always reserve the maximum prompt height (content + 2 borders) like pi's
-  // editor, so the message viewport keeps a stable height and does not jump as
-  // the prompt grows/shrinks or while responses stream.
-  const inputHeight = promptMaxContentHeight + 2;
+  // The prompt is compact: it starts at a single line and grows with the input
+  // only up to a small cap (never the old ~30% of the screen). This keeps the
+  // box small while still letting multi-line input expand when needed.
+  const promptMaxContentHeight = Math.min(8, Math.max(3, Math.floor(termRows * 0.2)));
+  const promptContentWidth = Math.max(1, termCols - 2);
+  const promptLineCount = Math.max(
+    1,
+    wrapInputToVisualLines(input, promptContentWidth).length
+  );
+  const promptContentHeight = Math.min(promptMaxContentHeight, promptLineCount);
+  // InputPanel renders: top border (1) + content (promptContentHeight) +
+  // bottom border (1). Reserve exactly that so nothing overflows/overlaps.
+  const inputHeight = promptContentHeight + 2;
   const statusHeight = 1;
-  const msgAreaHeight = Math.max(3, termRows - inputHeight - statusHeight);
+  const dividerHeight = 1;
+  const msgAreaHeight = Math.max(3, termRows - inputHeight - statusHeight - dividerHeight);
 
   const viewport = useMemo(
     () =>
@@ -292,7 +303,18 @@ export default function App() {
         />
       )}
 
-      <InputPanel input={input} cursorPos={cursorPos} width={termCols} termRows={termRows} status={status} />
+      <InputPanel
+        input={input}
+        cursorPos={cursorPos}
+        width={termCols}
+        maxVisibleLines={promptContentHeight}
+        status={status}
+      />
+
+      {/* Divider that visually separates the prompt from the status bar. */}
+      <Box height={dividerHeight} width={termCols} overflow="hidden">
+        <Text color={SEPARATOR_COLOR} dimColor>{"─".repeat(termCols)}</Text>
+      </Box>
 
       <Box height={statusHeight} flexDirection="row" width={termCols} overflow="hidden">
         <Text color={status === "thinking" ? STATUS_BUSY_COLOR : STATUS_SUCCESS_COLOR}>

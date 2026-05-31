@@ -1,5 +1,4 @@
 import type { Message } from "./llm.js";
-import { wrapText } from "./message-format.js";
 import { getMessageHeight } from "./message-line.js";
 
 export type ViewportModel = {
@@ -30,13 +29,17 @@ export function buildViewportModel(args: {
     expandedTools,
     scrollLines,
     isStreaming,
-    streamingText,
   } = args;
 
   const messageHeights = messages.map((message, index) =>
     getMessageHeight(message, termCols, expandedTools, index)
   );
-  const streamingHeight = isStreaming ? Math.max(1, wrapText(streamingText, termCols).length) : 0;
+  // While the agent works we deliberately HIDE the full streaming/tool output
+  // (pi-style) and show only a single compact status line. The viewport must
+  // therefore reserve exactly ONE line for it — accounting for the full wrapped
+  // text here (while rendering only one line) is what caused the transcript to
+  // overlap and "glitch" as tokens streamed in.
+  const streamingHeight = isStreaming ? 1 : 0;
   const totalContentLines = messageHeights.reduce((sum, value) => sum + value, 0) + streamingHeight;
   const maxScroll = Math.max(0, totalContentLines - msgAreaHeight);
   const clampedScroll = Math.min(scrollLines, maxScroll);
