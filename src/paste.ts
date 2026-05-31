@@ -8,12 +8,34 @@
 const PASTE_LINE_THRESHOLD = 10;
 const PASTE_CHAR_THRESHOLD = 1000;
 
+// Bracketed-paste guards. When a terminal has bracketed paste mode enabled it
+// wraps pasted text in ESC[200~ … ESC[201~. Ink's `useInput` usually strips the
+// leading ESC, so the markers can leak through as the literal text `[200~` /
+// `[201~`. We strip both the full escape sequences and the ESC-less remnants so
+// they never end up inserted into the editor (the bug from the TODO note).
+const BRACKETED_PASTE_MARKERS = /\x1b?\[20[01]~/g;
+
 /**
- * Normalize pasted text: collapse CRLF/CR to LF and strip C0 control
- * characters other than newline and tab (which terminals may include).
+ * Strip any bracketed-paste start/end markers from a chunk. Safe to call on any
+ * input event, whether or not it actually came from a paste.
+ */
+export function stripBracketedPasteMarkers(text: string): string {
+  return text.replace(BRACKETED_PASTE_MARKERS, "");
+}
+
+/** True if a chunk contains bracketed-paste markers (i.e. it is a paste). */
+export function hasBracketedPasteMarkers(text: string): boolean {
+  BRACKETED_PASTE_MARKERS.lastIndex = 0;
+  return BRACKETED_PASTE_MARKERS.test(text);
+}
+
+/**
+ * Normalize pasted text: strip bracketed-paste markers, collapse CRLF/CR to LF
+ * and strip C0 control characters other than newline and tab (which terminals
+ * may include).
  */
 export function normalizePaste(text: string): string {
-  return text
+  return stripBracketedPasteMarkers(text)
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n")
     .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "");

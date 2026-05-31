@@ -76,6 +76,11 @@ export const TOOL_METADATA: ToolMetadata[] = [
   },
 ];
 
+function countLines(text: string): number {
+  if (text.length === 0) return 0;
+  return text.split("\n").length;
+}
+
 function clampOutput(text: string): { text: string; truncated: boolean } {
   if (text.length <= MAX_OUTPUT_CHARS) return { text, truncated: false };
   const head = text.slice(0, MAX_OUTPUT_CHARS);
@@ -214,7 +219,12 @@ export async function editFileTool(
       }
       await mkdir(dirname(fullPath), { recursive: true });
       await Bun.write(fullPath, newStr);
-      return { path: fullPath, action: "created_file" };
+      return {
+        path: fullPath,
+        action: "created_file",
+        added: countLines(newStr),
+        removed: 0,
+      };
     }
     const original = await Bun.file(fullPath).text();
     if (!original.includes(oldStr)) {
@@ -222,7 +232,12 @@ export async function editFileTool(
     }
     const edited = original.replace(oldStr, newStr);
     await Bun.write(fullPath, edited);
-    return { path: fullPath, action: "edited" };
+    return {
+      path: fullPath,
+      action: "edited",
+      added: countLines(newStr),
+      removed: countLines(oldStr),
+    };
   } catch (e: any) {
     return { path: fullPath, error: e.message as string };
   }
@@ -235,9 +250,20 @@ export async function atomicOverwriteTool(
   const fullPath = resolveAbsPath(filename);
   const tmpPath = `${fullPath}.tmp`;
   try {
+    let previousLines = 0;
+    try {
+      previousLines = countLines(await Bun.file(fullPath).text());
+    } catch {
+      /* new file */
+    }
     await Bun.write(tmpPath, newContent);
     await rename(tmpPath, fullPath);
-    return { action: `Atomically overwrote entire file: ${fullPath}` };
+    return {
+      action: `Atomically overwrote entire file: ${fullPath}`,
+      path: fullPath,
+      added: countLines(newContent),
+      removed: previousLines,
+    };
   } catch (e: any) {
     try {
       await unlink(tmpPath);

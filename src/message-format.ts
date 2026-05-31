@@ -80,6 +80,21 @@ export function parseToolDisplay(
   }
 }
 
+/** Show a path relative to the working directory when possible. */
+function shortenPath(path: string): string {
+  const cwd = process.cwd();
+  if (path.startsWith(cwd + "/")) return path.slice(cwd.length + 1);
+  return path;
+}
+
+/** Compact "+added/-removed lines" suffix for an edit/write result. */
+function changeSummary(result: any): string {
+  const added = typeof result.added === "number" ? result.added : null;
+  const removed = typeof result.removed === "number" ? result.removed : null;
+  if (added === null && removed === null) return "";
+  return `  +${added ?? 0}/-${removed ?? 0} lines`;
+}
+
 export function summarizeToolDisplay(name: string, result: any): string {
   if (result?.error) return `❌ ${name}: ${result.error}`;
   switch (name) {
@@ -96,15 +111,21 @@ export function summarizeToolDisplay(name: string, result: any): string {
       return `📁 list: ${path} (${count} items)`;
     }
     case "edit_file": {
-      const path = result.path ?? "unknown";
+      const path = shortenPath(result.path ?? "unknown");
       const action = result.action ?? "done";
+      // The user only wants the final structure of the change, not the diff
+      // body: show the path plus a compact +added/-removed line summary.
+      if (action === "edited" || action === "created_file") {
+        const verb = action === "created_file" ? "create" : "edit";
+        return `✏️ ${verb}: ${path}${changeSummary(result)}`;
+      }
       return `✏️ edit: ${path} (${action})`;
     }
     case "atomic_overwrite": {
       const action = result.action ?? "";
       const match = action.match(/Atomically overwrote entire file: (.+)/);
-      const path = match ? match[1] : "unknown";
-      return `💾 write: ${path}`;
+      const path = shortenPath(result.path ?? (match ? match[1] : "unknown"));
+      return `💾 write: ${path}${changeSummary(result)}`;
     }
     case "run_command": {
       const cmd = result.command ?? "";

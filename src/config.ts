@@ -31,6 +31,11 @@ export const TEXT_COLOR = GRUVBOX_FG;
 export const STATUS_SUCCESS_COLOR = GRUVBOX_GREEN;
 export const STATUS_BUSY_COLOR = GRUVBOX_ORANGE;
 
+// Approximate model context window, used only to render the "context used"
+// indicator in the status bar (not a hard limit). Override via env if your
+// model has a different window.
+export const CONTEXT_BUDGET = Number(process.env.LLM_CONTEXT_BUDGET ?? "128000");
+
 export const MAX_TOOL_ROUNDS = Number(process.env.MAX_TOOL_ROUNDS ?? "100");
 export const MAX_CONVERSATION_MESSAGES = Number(
   process.env.MAX_CONVERSATION_MESSAGES ?? "40"

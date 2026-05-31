@@ -60,6 +60,9 @@ export function MessageViewport({
           <Text color={MUTED_COLOR} dimColor>
             {"Shift+Enter newline • PgUp/PgDn scroll • Ctrl+O copy • Ctrl+/ undo"}
           </Text>
+          <Text color={MUTED_COLOR} dimColor>
+            {".new start a session • .resume list recent sessions"}
+          </Text>
         </Box>
       )}
 
