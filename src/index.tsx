@@ -31,11 +31,24 @@ if (argv[0] === "index") {
 }
 
 async function startTui() {
+  const isTty = process.stdout.isTTY;
+
+  // Force truecolor for the TUI. Ink colors are emitted via `chalk.hex(...)`,
+  // whose output depends on chalk's auto-detected color level. Over SSH / on a
+  // VPS, `COLORTERM` is usually not propagated and `TERM` may be minimal
+  // ("dumb"/"xterm"), so chalk detects level 0 and silently strips every hex
+  // color. We already emit raw 24-bit escapes at startup (see below), proving
+  // the terminal renders truecolor, so we pin chalk to level 3 for the TTY.
+  if (isTty && !Bun.env.NO_COLOR) {
+    process.env.FORCE_COLOR = "3";
+    const chalk = (await import("chalk")).default;
+    chalk.level = 3;
+  }
+
   const { render } = await import("ink");
   const React = (await import("react")).default;
   const App = (await import("./ui/app")).default;
   const { killAllChildren } = await import("./core/process-registry");
-  const isTty = process.stdout.isTTY;
 
   const GRUVBOX_BG = "#282828";
   const GRUVBOX_FG = "#ebdbb2";
