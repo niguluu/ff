@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_URL="https://github.com/niguluu/fff.git"
 INSTALL_DIR="${FFF_INSTALL_DIR:-$HOME/.fff}"
 BIN_DIR="${FFF_BIN_DIR:-$HOME/.local/bin}"
 BIN_PATH="$BIN_DIR/fff"
@@ -12,6 +12,15 @@ echo "==> fff installer"
 if ! command -v bun &>/dev/null; then
   echo "Error: bun is not installed. Install it first: https://bun.sh"
   exit 1
+fi
+
+# Detect if we're being piped (not run from a local repo)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ ! -f "$SCRIPT_DIR/package.json" ]]; then
+  TMP_DIR="$(mktemp -d)"
+  echo "==> Cloning $REPO_URL..."
+  git clone --depth 1 "$REPO_URL" "$TMP_DIR"
+  SCRIPT_DIR="$TMP_DIR"
 fi
 
 # Build
