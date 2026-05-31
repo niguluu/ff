@@ -1,9 +1,10 @@
 import React, { useMemo } from "react";
 import { Box, Text } from "ink";
-import { MUTED_COLOR, PROMPT_ACCENT_COLOR, TEXT_COLOR, THEME_BG, YOU_COLOR } from "./config.js";
+import { MUTED_COLOR, TEXT_COLOR, THEME_BG, YOU_COLOR } from "./config.js";
 import { wrapInputToVisualLines } from "./pi-prompt-utils.js";
 import { firstGrapheme } from "./text-segmentation.js";
 import { FillLines } from "./theme.js";
+
 
 type InputPanelProps = {
   input: string;
@@ -15,13 +16,12 @@ type InputPanelProps = {
 };
 
 const PADDING_X = 1;
-const LABEL = "\u2500 prompt ";
 
 export function InputPanel({ input, cursorPos, width, maxVisibleLines, status }: InputPanelProps) {
   const contentWidth = Math.max(1, width - PADDING_X * 2);
   const isIdle = status === "idle";
 
-  const { visibleLines, scrollOffset, linesBelow } = useMemo(() => {
+  const { visibleLines } = useMemo(() => {
     const beforeCursor = input.slice(0, cursorPos);
     const cursorLine = beforeCursor.split("\n").length - 1;
     const cursorCol = cursorPos - (input.lastIndexOf("\n", cursorPos - 1) + 1);
@@ -37,26 +37,19 @@ export function InputPanel({ input, cursorPos, width, maxVisibleLines, status }:
     });
 
     const cursorVisualLine = linesWithCursor.findIndex((l) => l.isCursorLine);
-    let so = 0;
+    let scrollOffset = 0;
     if (cursorVisualLine >= maxVisibleLines) {
-      so = cursorVisualLine - maxVisibleLines + 1;
+      scrollOffset = cursorVisualLine - maxVisibleLines + 1;
     }
     const maxScrollOffset = Math.max(0, linesWithCursor.length - maxVisibleLines);
-    so = Math.max(0, Math.min(so, maxScrollOffset));
+    scrollOffset = Math.max(0, Math.min(scrollOffset, maxScrollOffset));
 
-    const visible = linesWithCursor.slice(so, so + maxVisibleLines);
-    const below = linesWithCursor.length - (so + visible.length);
+    const visible = linesWithCursor.slice(scrollOffset, scrollOffset + maxVisibleLines);
 
-    return { visibleLines: visible, scrollOffset: so, linesBelow: below };
+    return { visibleLines: visible };
   }, [input, cursorPos, contentWidth, maxVisibleLines]);
 
   const isEmpty = input.length === 0;
-  const topBorder = scrollOffset > 0
-    ? `─── ↑ ${scrollOffset} more `
-    : "";
-  const bottomBorder = linesBelow > 0
-    ? `─── ↓ ${linesBelow} more `
-    : "";
 
   // Each rendered prompt row is painted full-width with the theme background
   // (leading PADDING_X + prefix + body + trailing filler) so the Gruvbox color
@@ -126,22 +119,6 @@ export function InputPanel({ input, cursorPos, width, maxVisibleLines, status }:
 
   return (
     <Box flexDirection="column" width={width} overflow="hidden">
-      {/* Top border — labelled and accented so the prompt region is clearly
-          separated from the transcript above it. */}
-      <Box flexDirection="row" width={width} overflow="hidden">
-        {scrollOffset > 0 ? (
-          <>
-            <Text color={PROMPT_ACCENT_COLOR} backgroundColor={THEME_BG}>{topBorder}</Text>
-            <Text color={PROMPT_ACCENT_COLOR} backgroundColor={THEME_BG}>{"─".repeat(Math.max(0, width - topBorder.length))}</Text>
-          </>
-        ) : (
-          <>
-            <Text color={PROMPT_ACCENT_COLOR} bold backgroundColor={THEME_BG}>{LABEL}</Text>
-            <Text color={PROMPT_ACCENT_COLOR} backgroundColor={THEME_BG}>{"─".repeat(Math.max(0, width - LABEL.length))}</Text>
-          </>
-        )}
-      </Box>
-
       {/* Content lines — empty input flows through the same pipeline so the box
           never collapses. Height is the dynamic content height computed by App
           (grows with input up to a small cap) so the prompt stays compact. */}
@@ -155,7 +132,6 @@ export function InputPanel({ input, cursorPos, width, maxVisibleLines, status }:
             (fixed-height) content box rather than leaving raw terminal rows. */}
         <FillLines count={Math.max(0, maxVisibleLines - visibleLines.length)} width={width} />
       </Box>
-
     </Box>
   );
 }

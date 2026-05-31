@@ -102,7 +102,7 @@ export function MessageLine({ msg, width, isExpanded }: MessageLineProps) {
             const accent = getToolAccent(invocation.name);
             return (
               <Box key={i} flexDirection="row">
-                <Text color={accent} bold backgroundColor={THEME_BG}>{"→ "}</Text>
+                <Text color={accent} bold backgroundColor={THEME_BG}>{"⚡ "}</Text>
                 <Text color={accent} bold backgroundColor={THEME_BG}>{invocation.name}</Text>
                 <Text color={TOOL_COLOR} backgroundColor={THEME_BG}>{padToWidth(" " + formatToolCallArgs(invocation), Math.max(0, width - 2 - invocation.name.length))}</Text>
               </Box>
