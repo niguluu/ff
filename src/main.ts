@@ -1,53 +1,69 @@
-import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
-import { runHarness } from "./backend.js";
-import { DEFAULT_SYSTEM_PROMPT } from "./defaults.js";
-import { renderScreen, type ScreenState } from "./render.js";
+import { FfApp } from "./app.js";
+import { renderScreen } from "./render.js";
 
-const state: ScreenState = {
-  systemPrompt: DEFAULT_SYSTEM_PROMPT,
-  prompt: "",
-  stream: "",
-  status: "Idle",
-};
-
-function redraw(): void {
-  output.write("\x1Bc");
-  output.write(`${renderScreen(state, output.columns || 80)}\n`);
+function isPrintable(data: string): boolean {
+  return /^[^\u0000-\u001f\u007f]$/u.test(data);
 }
 
 async function main(): Promise<void> {
-  const rl = readline.createInterface({ input, output });
+  const app = new FfApp();
 
-  redraw();
-  const prompt = await rl.question("ff> ");
-  state.prompt = prompt;
-  state.stream = "";
-  state.status = "Streaming from Rust backend...";
-  redraw();
+  const redraw = (): void => {
+    output.write("\x1b[?25l\x1b[H\x1b[2J");
+    output.write(`${renderScreen(app.state, output.columns || 80)}\n`);
+  };
 
-  try {
-    await runHarness({
-      cwd: process.cwd(),
-      prompt,
-      onEvent(event) {
-        if (event.type === "meta") {
-          state.systemPrompt = event.systemPrompt;
-        } else if (event.type === "chunk") {
-          state.stream += event.content;
-        } else {
-          state.status = "Done";
-        }
-        redraw();
-      },
-    });
-    state.status = "Done";
-  } catch (error) {
-    state.status = error instanceof Error ? error.message : "Unknown error";
-  } finally {
+  const submit = async (): Promise<void> => {
+    if (app.state.busy) {
+      return;
+    }
+    await app.submitPrompt();
     redraw();
-    rl.close();
-  }
+  };
+
+  redraw();
+  input.setRawMode?.(true);
+  input.setEncoding("utf8");
+  input.resume();
+
+  await new Promise<void>((resolve) => {
+    const onData = (data: string): void => {
+      if (data === "\u0003" || data === "\u0004") {
+        cleanup();
+        resolve();
+        return;
+      }
+
+      if (data === "\r" || data === "\n") {
+        void submit();
+        return;
+      }
+
+      if (app.state.busy) {
+        return;
+      }
+
+      if (data === "\u007f") {
+        app.backspaceInput();
+        redraw();
+        return;
+      }
+
+      if (isPrintable(data)) {
+        app.appendInput(data);
+        redraw();
+      }
+    };
+
+    const cleanup = (): void => {
+      input.off("data", onData);
+      input.setRawMode?.(false);
+      output.write("\x1b[?25h\n");
+    };
+
+    input.on("data", onData);
+  });
 }
 
 void main();

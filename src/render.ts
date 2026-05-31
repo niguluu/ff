@@ -1,7 +1,9 @@
 export interface ScreenState {
   systemPrompt: string;
-  prompt: string;
+  prompt?: string;
+  input?: string;
   stream: string;
+  history?: string;
   status: string;
 }
 
@@ -42,10 +44,13 @@ function box(title: string, content: string, width: number, minRows = 1): string
 
 export function renderScreen(state: ScreenState, width = 80): string {
   const safeWidth = Math.max(24, width);
+  const promptValue = state.input ?? state.prompt ?? "";
+  const historyValue = state.history?.trim() || "Waiting for conversation...";
   const sections = [
     box("System Prompt", state.systemPrompt, safeWidth, 3),
-    box("Agent Stream", state.stream || "Waiting for backend output...", safeWidth, 8),
-    box("Prompt", state.prompt || "Type your request and press Enter.", safeWidth, 3),
+    box("Conversation", historyValue, safeWidth, 8),
+    box("Agent Stream", state.stream || "Waiting for backend output...", safeWidth, 6),
+    box("Prompt", promptValue || "Type your request and press Enter.", safeWidth, 3),
     [`Status: ${state.status}`],
   ];
 

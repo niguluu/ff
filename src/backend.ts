@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
+import { loadHomeEnvFile } from "./env.js";
 import { parseStreamEvent, type StreamEvent } from "./protocol.js";
 
 export interface RunHarnessOptions {
@@ -10,15 +11,18 @@ export interface RunHarnessOptions {
 
 export async function runHarness(options: RunHarnessOptions): Promise<void> {
   const manifestPath = path.join(options.cwd, "rust-server", "Cargo.toml");
+  const env = loadHomeEnvFile({
+    baseEnv: {
+      ...process.env,
+      PATH: `${process.env.HOME ?? ""}/.cargo/bin:${process.env.PATH ?? ""}`,
+    },
+  });
   const child = spawn(
     "cargo",
     ["run", "--quiet", "--manifest-path", manifestPath, "--", options.prompt],
     {
       cwd: options.cwd,
-      env: {
-        ...process.env,
-        PATH: `${process.env.HOME ?? ""}/.cargo/bin:${process.env.PATH ?? ""}`,
-      },
+      env,
       stdio: ["ignore", "pipe", "pipe"],
     },
   );
