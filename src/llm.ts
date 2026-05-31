@@ -3,7 +3,7 @@ import { TOOL_METADATA } from "./tools.js";
 
 const API_KEY = process.env.OPENAI_API_KEY ?? "";
 const BASE_URL = process.env.OPENAI_BASE_URL ?? "https://api.deepseek.com/v1";
-const MODEL = process.env.OPENAI_MODEL ?? "deepseek-v4-flash";
+export const MODEL = process.env.OPENAI_MODEL ?? "deepseek-v4-flash";
 const TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS ?? "60000");
 const TEMPERATURE = Number(process.env.LLM_TEMPERATURE ?? "0.2");
 const MAX_TOKENS = Number(process.env.LLM_MAX_TOKENS ?? "64000");
@@ -42,6 +42,7 @@ IMPORTANT RULES:
 2. For editing files: Use edit_file for targeted replacements. It replaces the first occurrence of old_str with new_str.
 3. For creating new files or full rewrites: Use atomic_overwrite.
 4. Always use absolute file paths.
+5. The bash tool can run any shell command including git, npm, node, etc. Do not tell the user to run commands manually—execute them directly.
 
 When you want to use a tool, reply with exactly one line in the format: 'tool: TOOL_NAME({JSON_ARGS})' and nothing else.
 Use compact single-line JSON OBJECT with double quotes for keys and values. Example: tool: read_file({"filename": "/home/balls/fff/src/index.tsx"}).
