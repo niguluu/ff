@@ -12,7 +12,7 @@ import {
   TEXT_COLOR,
   YOU_COLOR,
 } from "../core/config";
-import { getVersion } from "../utils/version";
+import { getVersion, checkForUpdate } from "../utils/version";
 import { FillLines, padToWidth } from "./theme";
 import { wrapInputToVisualLines } from "../utils/pi-prompt-utils";
 import { estimateTokens } from "../core/conversation";
@@ -66,6 +66,19 @@ export default function App() {
   const streamingRef = useRef("");
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [updateAvailable, setUpdateAvailable] = useState<string | null>(null);
+
+  // Check for updates once on mount
+  useEffect(() => {
+    let cancelled = false;
+    checkForUpdate().then((result) => {
+      if (cancelled) return;
+      if (result.hasUpdate && result.latestVersion) {
+        setUpdateAvailable(result.latestVersion);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const [termSize, setTermSize] = useState(() => [stdout.columns ?? 80, stdout.rows ?? 24]);
   const termCols = termSize[0]!;
@@ -363,6 +376,7 @@ export default function App() {
         copyFeedback={copyFeedback}
         scroll={viewport.clampedScroll}
         hasMoreBelow={viewport.hasMoreBelow}
+        updateAvailable={updateAvailable}
       />
     </Box>
   );
@@ -385,6 +399,7 @@ function StatusBar({
   copyFeedback,
   scroll,
   hasMoreBelow,
+  updateAvailable,
 }: {
   width: number;
   height: number;
@@ -397,6 +412,7 @@ function StatusBar({
   copyFeedback: string;
   scroll: number;
   hasMoreBelow: boolean;
+  updateAvailable: string | null;
 }) {
   const version = getVersion();
   const bullet = status === "thinking" ? "\u25cf" : "\u25cb";
@@ -406,7 +422,8 @@ function StatusBar({
   const copyPart = copyFeedback ? copyFeedback + " " : "";
   const scrollPart = scroll > 0 ? `scroll ${scroll} ` : "";
   const bottomPart = hasMoreBelow ? "\u2193bottom" : "";
-  const right = copyPart + scrollPart + bottomPart;
+  const updatePart = updateAvailable ? `update v${updateAvailable} ` : "";
+  const right = copyPart + scrollPart + bottomPart + updatePart;
 
   const remaining = Math.max(0, width - left.length - center.length - right.length);
   const gap1 = Math.floor(remaining / 2);
@@ -424,6 +441,7 @@ function StatusBar({
       {copyPart && <Text color={STATUS_SUCCESS_COLOR}>{copyPart}</Text>}
       {scrollPart && <Text color={STATUS_BUSY_COLOR}>{scrollPart}</Text>}
       {bottomPart && <Text color={MUTED_COLOR}>{bottomPart}</Text>}
+      {updatePart && <Text color={STATUS_BUSY_COLOR}>{updatePart}</Text>}
     </Box>
   );
 }
