@@ -19,7 +19,7 @@ export function renderScreen(state: ScreenState, _width = 80): string {
     lines.push(state.stream);
   }
 
-  if (state.input !== undefined && state.input.length > 0) {
+  if (state.input !== undefined) {
     if (lines.length > 0) lines.push("");
     lines.push(`> ${state.input}`);
   }
