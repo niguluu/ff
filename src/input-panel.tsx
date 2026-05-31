@@ -1,8 +1,9 @@
 import React, { useMemo } from "react";
 import { Box, Text } from "ink";
-import { MUTED_COLOR, PROMPT_ACCENT_COLOR, TEXT_COLOR, YOU_COLOR } from "./config.js";
+import { MUTED_COLOR, PROMPT_ACCENT_COLOR, TEXT_COLOR, THEME_BG, YOU_COLOR } from "./config.js";
 import { wrapInputToVisualLines } from "./pi-prompt-utils.js";
 import { firstGrapheme } from "./text-segmentation.js";
+import { FillLines } from "./theme.js";
 
 type InputPanelProps = {
   input: string;
@@ -57,6 +58,10 @@ export function InputPanel({ input, cursorPos, width, maxVisibleLines, status }:
     ? `─── ↓ ${linesBelow} more `
     : "";
 
+  // Each rendered prompt row is painted full-width with the theme background
+  // (leading PADDING_X + prefix + body + trailing filler) so the Gruvbox color
+  // covers the whole prompt box on every terminal, not just under the glyphs.
+  const leading = " ".repeat(PADDING_X);
   function renderLine(
     line: { text: string; lineIndex: number; isCursorLine: boolean; cursorOffset: number },
     lineIdx: number
@@ -65,19 +70,24 @@ export function InputPanel({ input, cursorPos, width, maxVisibleLines, status }:
     const prefix = isFirst ? "> " : "  ";
     const availableWidth = Math.max(0, contentWidth - prefix.length);
     const displayText = line.text.slice(0, availableWidth);
+    const fill = (bodyWidth: number) =>
+      " ".repeat(Math.max(0, width - PADDING_X - prefix.length - bodyWidth));
 
     // Empty input: render the prompt + fake cursor (and a placeholder hint when
     // idle) through the same pipeline so the box never collapses.
     if (isEmpty && isFirst) {
+      const hint = isIdle ? "Ask fff to inspect, edit, debug, or build…" : "";
       return (
-        <Box flexDirection="row" width={contentWidth} overflow="hidden">
-          <Text color={YOU_COLOR} bold>{prefix}</Text>
-          <Text inverse> </Text>
+        <Box flexDirection="row" width={width} overflow="hidden">
+          <Text backgroundColor={THEME_BG}>{leading}</Text>
+          <Text color={YOU_COLOR} bold backgroundColor={THEME_BG}>{prefix}</Text>
+          <Text inverse>{" "}</Text>
           {isIdle && (
-            <Text color={MUTED_COLOR} dimColor>
-              {"Ask fff to inspect, edit, debug, or build…"}
+            <Text color={MUTED_COLOR} dimColor backgroundColor={THEME_BG}>
+              {hint}
             </Text>
           )}
+          <Text backgroundColor={THEME_BG}>{fill(1 + hint.length)}</Text>
         </Box>
       );
     }
@@ -91,21 +101,25 @@ export function InputPanel({ input, cursorPos, width, maxVisibleLines, status }:
       const afterCursor = rest.slice(atCursor === " " && rest.length === 0 ? 0 : atCursor.length);
 
       return (
-        <Box flexDirection="row" width={contentWidth} overflow="hidden">
-          <Text color={isFirst ? YOU_COLOR : MUTED_COLOR} bold={isFirst}>{prefix}</Text>
-          <Text color={TEXT_COLOR}>{beforeCursor}</Text>
+        <Box flexDirection="row" width={width} overflow="hidden">
+          <Text backgroundColor={THEME_BG}>{leading}</Text>
+          <Text color={isFirst ? YOU_COLOR : MUTED_COLOR} bold={isFirst} backgroundColor={THEME_BG}>{prefix}</Text>
+          <Text color={TEXT_COLOR} backgroundColor={THEME_BG}>{beforeCursor}</Text>
           <Text inverse>{atCursor}</Text>
-          <Text color={TEXT_COLOR}>{afterCursor}</Text>
+          <Text color={TEXT_COLOR} backgroundColor={THEME_BG}>{afterCursor}</Text>
+          <Text backgroundColor={THEME_BG}>{fill(beforeCursor.length + 1 + afterCursor.length)}</Text>
         </Box>
       );
     }
 
     return (
-      <Box flexDirection="row" width={contentWidth} overflow="hidden">
-        <Text color={isFirst ? YOU_COLOR : MUTED_COLOR}>
+      <Box flexDirection="row" width={width} overflow="hidden">
+        <Text backgroundColor={THEME_BG}>{leading}</Text>
+        <Text color={isFirst ? YOU_COLOR : MUTED_COLOR} backgroundColor={THEME_BG}>
           {prefix}
         </Text>
-        <Text color={TEXT_COLOR}>{displayText}</Text>
+        <Text color={TEXT_COLOR} backgroundColor={THEME_BG}>{displayText}</Text>
+        <Text backgroundColor={THEME_BG}>{fill(displayText.length)}</Text>
       </Box>
     );
   }
@@ -117,13 +131,13 @@ export function InputPanel({ input, cursorPos, width, maxVisibleLines, status }:
       <Box flexDirection="row" width={width} overflow="hidden">
         {scrollOffset > 0 ? (
           <>
-            <Text color={PROMPT_ACCENT_COLOR}>{topBorder}</Text>
-            <Text color={PROMPT_ACCENT_COLOR}>{"─".repeat(Math.max(0, width - topBorder.length))}</Text>
+            <Text color={PROMPT_ACCENT_COLOR} backgroundColor={THEME_BG}>{topBorder}</Text>
+            <Text color={PROMPT_ACCENT_COLOR} backgroundColor={THEME_BG}>{"─".repeat(Math.max(0, width - topBorder.length))}</Text>
           </>
         ) : (
           <>
-            <Text color={PROMPT_ACCENT_COLOR} bold>{LABEL}</Text>
-            <Text color={PROMPT_ACCENT_COLOR}>{"─".repeat(Math.max(0, width - LABEL.length))}</Text>
+            <Text color={PROMPT_ACCENT_COLOR} bold backgroundColor={THEME_BG}>{LABEL}</Text>
+            <Text color={PROMPT_ACCENT_COLOR} backgroundColor={THEME_BG}>{"─".repeat(Math.max(0, width - LABEL.length))}</Text>
           </>
         )}
       </Box>
@@ -134,21 +148,23 @@ export function InputPanel({ input, cursorPos, width, maxVisibleLines, status }:
       <Box flexDirection="column" width={width} height={maxVisibleLines} overflow="hidden">
         {visibleLines.map((line, idx) => (
           <Box key={idx} flexDirection="row" width={width} overflow="hidden">
-            <Text>{" ".repeat(PADDING_X)}</Text>
             {renderLine(line, idx)}
           </Box>
         ))}
+        {/* Pad any unused prompt rows so the themed background fills the whole
+            (fixed-height) content box rather than leaving raw terminal rows. */}
+        <FillLines count={Math.max(0, maxVisibleLines - visibleLines.length)} width={width} />
       </Box>
 
       {/* Bottom border */}
       <Box flexDirection="row" width={width} overflow="hidden">
         {linesBelow > 0 ? (
           <>
-            <Text color={PROMPT_ACCENT_COLOR}>{bottomBorder}</Text>
-            <Text color={PROMPT_ACCENT_COLOR}>{"─".repeat(Math.max(0, width - bottomBorder.length))}</Text>
+            <Text color={PROMPT_ACCENT_COLOR} backgroundColor={THEME_BG}>{bottomBorder}</Text>
+            <Text color={PROMPT_ACCENT_COLOR} backgroundColor={THEME_BG}>{"─".repeat(Math.max(0, width - bottomBorder.length))}</Text>
           </>
         ) : (
-          <Text color={PROMPT_ACCENT_COLOR}>{"─".repeat(width)}</Text>
+          <Text color={PROMPT_ACCENT_COLOR} backgroundColor={THEME_BG}>{"─".repeat(width)}</Text>
         )}
       </Box>
     </Box>

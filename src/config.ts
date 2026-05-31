@@ -34,6 +34,12 @@ export const SEPARATOR_COLOR = GRUVBOX_BG3;
 export const TEXT_COLOR = GRUVBOX_FG;
 export const STATUS_SUCCESS_COLOR = GRUVBOX_GREEN;
 export const STATUS_BUSY_COLOR = GRUVBOX_ORANGE;
+// The theme background. We paint this explicitly on every rendered cell (via
+// Ink's per-Text `backgroundColor`) instead of relying solely on the terminal
+// OSC 11 "default background" escape — many terminals ignore OSC 11, which is
+// why the Gruvbox theme previously looked "not absolute" depending on the
+// terminal. Painting per-cell makes the theme consistent everywhere.
+export const THEME_BG = GRUVBOX_BG;
 
 // Model context window. Used to render the "context used" indicator in the
 // status bar. The target model has a 1M-token window, so we default to that and

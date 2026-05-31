@@ -38,6 +38,7 @@ chatting. Built with **Ink + React + Bun**.
 | **File tools** | Read, list, edit, and atomically overwrite files. Edits report only a compact `path +added/-removed lines` summary — no noisy diffs. |
 | **Shell** | `run_command` runs in its own process group and kills the whole tree on timeout/exit, so nothing is left orphaned. |
 | **Agent loop** | Plans in plain text before editing, then acts. Stops and reports on failure instead of looping forever. |
+| **Input editing** | Grapheme-aware cursor movement, word navigation (Ctrl/Alt+arrows), kill ring (cut/yank), undo stack, sticky-column up/down, bracketed paste handling with paste markers. |
 | **Sessions** | Every conversation is saved. `.new` starts fresh, `.resume` reopens a recent one. |
 | **Context meter** | The status bar shows an estimate of how much of the model context window is in use. |
 | **Logs** | Per-session agent logs under `~/.fff/logs`. |
@@ -189,9 +190,9 @@ src/
   conversation.ts         Conversation pruning + token estimation
   index.tsx               CLI entry point (TUI + `index` subcommand, theme/exit)
   indexer.ts              Codebase indexer (writes codebase-index.yaml)
-  input-editor.ts         Input editing primitives
-  input-panel.tsx         Input rendering
-  kill-ring.ts            Emacs-style kill ring
+  input-editor.ts         Input editing primitives (grapheme-aware backspace/delete)
+  input-panel.tsx         Input rendering (fixed-height prompt box)
+  kill-ring.ts            Emacs-style kill ring (cut/yank)
   llm.ts                  LLM client, system prompt, tool parsing
   logger.ts               Per-session agent file logging
   message-format.ts       Message formatting + concise edit summaries
@@ -201,14 +202,15 @@ src/
   pi-prompt-utils.ts      Visual-line / sticky-column cursor helpers
   process-registry.ts     Tracks/kills spawned child processes
   session-store.ts        Session persistence (.new / .resume)
-  text-segmentation.ts    Grapheme/word segmentation helpers
+  text-segmentation.ts    Grapheme/word segmentation helpers (Intl.Segmenter)
   tools-registry.ts       Tool registry + invocation
   tools.ts                Filesystem + run_command tool implementations
+  types.ts                Shared type definitions
   undo-stack.ts           Undo history for the input editor
   use-alternate-screen.ts Terminal screen hook (no-op; managed in index.tsx)
-  use-app-input.ts        Keyboard input handling
+  use-app-input.ts        Keyboard input handling (all keybindings)
   viewport.ts             Viewport/scroll calculations
-  word-navigation.ts      Word-boundary navigation
+  word-navigation.ts      Word-boundary navigation (findWordBackward/Forward)
 ```
 
 ---

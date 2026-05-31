@@ -10,8 +10,10 @@ import {
   STATUS_SUCCESS_COLOR,
   SYSTEM_PROMPT,
   TEXT_COLOR,
+  THEME_BG,
   YOU_COLOR,
 } from "./config.js";
+import { FillLines, padToWidth } from "./theme.js";
 import { wrapInputToVisualLines } from "./pi-prompt-utils.js";
 import { estimateTokens } from "./conversation.js";
 import {
@@ -313,27 +315,22 @@ export default function App() {
 
       {/* Divider that visually separates the prompt from the status bar. */}
       <Box height={dividerHeight} width={termCols} overflow="hidden">
-        <Text color={SEPARATOR_COLOR} dimColor>{"─".repeat(termCols)}</Text>
+        <Text color={SEPARATOR_COLOR} dimColor backgroundColor={THEME_BG}>{"─".repeat(termCols)}</Text>
       </Box>
 
-      <Box height={statusHeight} flexDirection="row" width={termCols} overflow="hidden">
-        <Text color={status === "thinking" ? STATUS_BUSY_COLOR : STATUS_SUCCESS_COLOR}>
-          {"fff "}
-          {status === "thinking" ? "●" : "○"}
-          {" " + statusLabel}
-        </Text>
-        <Box flexGrow={1} />
-        <Text color={MUTED_COLOR} dimColor>{`${MODEL} | ${assistantCount} rounds | `}</Text>
-        <Text color={ctxColor}>{ctxLabel}</Text>
-        <Box flexGrow={1} />
-        <Box flexDirection="row">
-          {copyFeedback && <Text color={STATUS_SUCCESS_COLOR}>{copyFeedback + " "}</Text>}
-          {viewport.clampedScroll > 0 && (
-            <Text color={STATUS_BUSY_COLOR} dimColor>{`scroll ${viewport.clampedScroll} `}</Text>
-          )}
-          {viewport.hasMoreBelow && <Text color={MUTED_COLOR} dimColor>{"↓bottom"}</Text>}
-        </Box>
-      </Box>
+      <StatusBar
+        width={termCols}
+        height={statusHeight}
+        status={status}
+        statusLabel={statusLabel}
+        model={MODEL}
+        rounds={assistantCount}
+        ctxLabel={ctxLabel}
+        ctxColor={ctxColor}
+        copyFeedback={copyFeedback}
+        scroll={viewport.clampedScroll}
+        hasMoreBelow={viewport.hasMoreBelow}
+      />
     </Box>
   );
 }
@@ -342,6 +339,66 @@ export default function App() {
 function formatTokens(n: number): string {
   if (n < 1000) return String(n);
   return `${(n / 1000).toFixed(1)}k`;
+}
+
+/**
+ * The bottom status line. Built as one explicitly themed, full-width row: the
+ * left/center/right groups are separated by background-painted spacer cells
+ * (instead of unpainted flexGrow gaps) so the Gruvbox background spans the
+ * entire line on every terminal.
+ */
+function StatusBar({
+  width,
+  height,
+  status,
+  statusLabel,
+  model,
+  rounds,
+  ctxLabel,
+  ctxColor,
+  copyFeedback,
+  scroll,
+  hasMoreBelow,
+}: {
+  width: number;
+  height: number;
+  status: AppStatus;
+  statusLabel: string;
+  model: string;
+  rounds: number;
+  ctxLabel: string;
+  ctxColor: string;
+  copyFeedback: string;
+  scroll: number;
+  hasMoreBelow: boolean;
+}) {
+  const bullet = status === "thinking" ? "\u25cf" : "\u25cb";
+  const left = `fff ${bullet} ${statusLabel}`;
+  const centerLeft = `${model} | ${rounds} rounds | `;
+  const center = centerLeft + ctxLabel;
+  const copyPart = copyFeedback ? copyFeedback + " " : "";
+  const scrollPart = scroll > 0 ? `scroll ${scroll} ` : "";
+  const bottomPart = hasMoreBelow ? "\u2193bottom" : "";
+  const right = copyPart + scrollPart + bottomPart;
+
+  const remaining = Math.max(0, width - left.length - center.length - right.length);
+  const gap1 = Math.floor(remaining / 2);
+  const gap2 = remaining - gap1;
+
+  return (
+    <Box height={height} flexDirection="row" width={width} overflow="hidden">
+      <Text color={status === "thinking" ? STATUS_BUSY_COLOR : STATUS_SUCCESS_COLOR} backgroundColor={THEME_BG}>
+        {left}
+      </Text>
+      <Text backgroundColor={THEME_BG}>{" ".repeat(gap1)}</Text>
+      <Text color={MUTED_COLOR} dimColor backgroundColor={THEME_BG}>{centerLeft}</Text>
+      <Text color={ctxColor} backgroundColor={THEME_BG}>{ctxLabel}</Text>
+      <Text backgroundColor={THEME_BG}>{" ".repeat(gap2)}</Text>
+      {copyPart && <Text color={STATUS_SUCCESS_COLOR} backgroundColor={THEME_BG}>{copyPart}</Text>}
+      {scrollPart && <Text color={STATUS_BUSY_COLOR} dimColor backgroundColor={THEME_BG}>{scrollPart}</Text>}
+      {bottomPart && <Text color={MUTED_COLOR} dimColor backgroundColor={THEME_BG}>{bottomPart}</Text>}
+    </Box>
+  );
 }
 
 function SessionPicker({
@@ -353,15 +410,17 @@ function SessionPicker({
   width: number;
   height: number;
 }) {
+  const used = 2 + 1 + sessions.length; // title + subtitle + blank + rows
   return (
     <Box flexDirection="column" justifyContent="flex-end" height={height} width={width} overflow="hidden">
-      <Text color={YOU_COLOR} bold>{"Recent sessions"}</Text>
-      <Text color={MUTED_COLOR} dimColor>{"type the number to resume, or .new for a fresh session"}</Text>
-      <Box height={1} />
+      <FillLines count={Math.max(0, height - used)} width={width} />
+      <Text color={YOU_COLOR} bold backgroundColor={THEME_BG}>{padToWidth("Recent sessions", width)}</Text>
+      <Text color={MUTED_COLOR} dimColor backgroundColor={THEME_BG}>{padToWidth("type the number to resume, or .new for a fresh session", width)}</Text>
+      <Text backgroundColor={THEME_BG}>{" ".repeat(width)}</Text>
       {sessions.map((session, index) => (
         <Box key={session.id} flexDirection="row" width={width} overflow="hidden">
-          <Text color={ASSISTANT_COLOR} bold>{`${index + 1}. `}</Text>
-          <Text color={TEXT_COLOR}>{sessionLabel(session)}</Text>
+          <Text color={ASSISTANT_COLOR} bold backgroundColor={THEME_BG}>{`${index + 1}. `}</Text>
+          <Text color={TEXT_COLOR} backgroundColor={THEME_BG}>{padToWidth(sessionLabel(session), Math.max(0, width - String(index + 1).length - 2))}</Text>
         </Box>
       ))}
     </Box>

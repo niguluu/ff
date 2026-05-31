@@ -1,7 +1,7 @@
 {
   "name": "fff",
   "version": "1.0.0",
-  "description": "fff (fucking fucking fast) — a fast terminal AI coding assistant",
+  "description": "fff (fucking fucking fast) — a terminal AI coding agent with grapheme-aware input editing, session persistence, and streaming TUI",
   "main": "src/index.tsx",
   "type": "module",
   "bin": {

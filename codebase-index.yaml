@@ -1,5 +1,5 @@
 # fff - Codebase Index
-# Generated: 2026-05-31T02:44:48.851Z via deepseek-chat
+# Generated: 2026-05-31T02:58:06.843Z via deepseek-chat
 
 project:
   name: fff
@@ -26,52 +26,54 @@ files:
   - path: src/clipboard.ts
     description: "Provides a cross-platform function to copy text to the system clipboard."
   - path: src/config.ts
-    description: "Exports color constants and system prompt configuration for the fff UI."
+    description: "Exports color constants and system prompt configuration for the fff terminal UI."
   - path: src/conversation.ts
-    description: "Prunes conversation messages to a maximum length, preserving the system message."
+    description: "Provides utilities for pruning conversation messages and estimating token counts."
   - path: src/index.tsx
-    description: "Entry point that dispatches to the indexer subcommand or starts the interactive TUI."
+    description: "Entry point that dispatches between the non-interactive indexer subcommand and the interactive TUI."
   - path: src/indexer.ts
-    description: "Walks the project and generates a codebase-index.yaml with one-line summaries of source files."
+    description: "Walks the project source files and generates a codebase-index.yaml with AI-generated summaries."
   - path: src/input-editor.ts
-    description: "Provides grapheme-aware text editing functions like insert, backspace, and word navigation."
+    description: "Implements grapheme-aware text editing operations like insert, backspace, and word navigation."
   - path: src/input-panel.tsx
-    description: "Renders the multi-line input panel with cursor positioning and visual line wrapping."
+    description: "Renders the user input area with visual line wrapping and cursor positioning."
   - path: src/kill-ring.ts
     description: "Implements an Emacs-style kill ring for managing killed text entries with yank support."
   - path: src/llm.ts
-    description: "Configures the OpenAI client and exports model constants, message types, and tool description generation."
+    description: "Configures the OpenAI client and provides functions for LLM calls and tool description generation."
   - path: src/logger.ts
-    description: "Provides a lightweight, non-throwing file logger for session traces."
+    description: "Provides a lightweight append-only logger that writes per-session logs to a file."
   - path: src/message-format.ts
-    description: "Contains utilities for wrapping text, parsing code blocks, and formatting tool invocations."
+    description: "Provides utilities for wrapping text and parsing code blocks and tool invocations from messages."
   - path: src/message-line.tsx
     description: "Renders a single message line with syntax highlighting for tool calls and code blocks."
   - path: src/message-viewport.tsx
-    description: "Renders the scrollable viewport of messages with streaming preview support."
+    description: "Renders the scrollable viewport of conversation messages with streaming preview support."
   - path: src/paste.ts
-    description: "Handles bracketed-paste normalization and large-paste collapsing into markers for editor readability."
+    description: "Handles bracketed-paste markers from terminal input, normalizing large pastes into compact markers for editor readability."
   - path: src/pi-prompt-utils.ts
-    description: "Provides visual line wrapping for input text based on terminal width, returning an array of visual line objects."
+    description: "Provides utilities for wrapping input text into visual lines based on terminal width, supporting cursor navigation."
   - path: src/process-registry.ts
-    description: "Manages a central registry of child processes to ensure they are killed on exit, preventing orphaned processes."
+    description: "Central registry for tracking spawned child processes to ensure they are killed on agent exit."
+  - path: src/session-store.ts
+    description: "Manages persistent session storage to JSON files for conversation history and resume functionality."
   - path: src/text-segmentation.ts
-    description: "Offers grapheme- and word-aware text segmentation utilities using Intl.Segmenter for cursor navigation."
+    description: "Provides grapheme and word segmentation utilities using Intl.Segmenter for text navigation."
   - path: src/tools-registry.ts
-    description: "Registers available tools (read, list, edit, overwrite, run command) in a typed registry for tool invocation."
+    description: "Registers and types tool definitions for file operations and command execution."
   - path: src/tools.ts
-    description: "Implements file system and command execution tools with path resolution, timeout, and output limits."
+    description: "Implements file and command execution tools with path resolution, timeout, and output limits."
   - path: src/types.ts
-    description: "Defines TypeScript types for application status, segments, input history, and agent state refs."
+    description: "Defines TypeScript types for application state, segments, history, and agent refs."
   - path: src/undo-stack.ts
-    description: "Implements a generic undo stack that stores deep-cloned state snapshots for undo functionality."
+    description: "Implements a generic undo stack with deep-cloned state snapshots."
   - path: src/use-alternate-screen.ts
-    description: "Provides a no-op hook for alternate screen lifecycle, now managed centrally in the entry point."
+    description: "No-op hook for alternate screen lifecycle, now managed by the entry point."
   - path: src/use-app-input.ts
-    description: "Handles keyboard input for the application, integrating editing, navigation, and tool invocation."
+    description: "Handles keyboard input for the application, integrating editor state, history, and paste handling."
   - path: src/viewport.ts
-    description: "Builds a viewport model for scrolling through messages, accounting for terminal dimensions and streaming state."
+    description: "Builds a viewport model for rendering messages with scrolling and streaming support."
   - path: src/word-navigation.ts
-    description: "Provides word-boundary navigation functions (forward/backward) using the shared word segmenter."
+    description: "Provides word-boundary navigation functions for cursor movement in text."
   - path: tsconfig.json
-    description: "Configures TypeScript compiler options for a Bun-based project with strict mode and bundler module resolution."
+    description: "TypeScript configuration for ESNext target, bundler module resolution, and strict mode."
