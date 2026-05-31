@@ -1,0 +1,22 @@
+{
+  "name": "ff-tui-harness",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/src/main.js",
+    "dev": "tsx src/main.ts",
+    "test": "node --test dist/test/**/*.test.js",
+    "test:src": "tsx --test test/**/*.test.ts",
+    "backend:test": "cargo test --manifest-path rust-server/Cargo.toml",
+    "backend:build": "cargo build --manifest-path rust-server/Cargo.toml",
+    "install:toolchain": "./scripts/install.sh",
+    "verify": "npm run build && npm run test && npm run backend:test && npm run backend:build"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
