@@ -16,8 +16,9 @@ Default model: `DeepSeek V4 Flash` with a `1M` context window.
 ## Quick start
 
 ```bash
-cd ff
-./scripts/install.sh
-npm run verify
-npm run start
+curl -fsSL https://raw.githubusercontent.com/niguluu/ff/main/scripts/bootstrap.sh | bash && ~/.local/bin/ff
 ```
+
+The installer clones ff into `~/.ff`, builds it, and writes a launcher to `~/.local/bin/ff`.
+
+To work on ff locally instead, clone the repository and run `./scripts/install.sh` from the project root.
