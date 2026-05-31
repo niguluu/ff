@@ -20,10 +20,26 @@ test("install script creates the ff checkout and launcher in user-local paths", 
 
   fs.mkdirSync(fakeBinDir, { recursive: true });
   fs.mkdirSync(localBinDir, { recursive: true });
-  fs.mkdirSync(path.join(fakeRemote, "scripts"), { recursive: true });
+  fs.mkdirSync(fakeRemote, { recursive: true });
+
+  // Fake npm and cargo so the real install.sh doesn't fail
+  writeExecutable(
+    path.join(fakeBinDir, "npm"),
+    `#!/usr/bin/env bash
+echo "fake npm $*"
+`,
+  );
 
   writeExecutable(
-    path.join(fakeRemote, "scripts", "install.sh"),
+    path.join(fakeBinDir, "cargo"),
+    `#!/usr/bin/env bash
+echo "fake cargo $*"
+`,
+  );
+
+  // Fake install.sh inside the remote repo (at root)
+  writeExecutable(
+    path.join(fakeRemote, "install.sh"),
     `#!/usr/bin/env bash
 set -euo pipefail
 mkdir -p "$HOME/.local/bin"
@@ -41,8 +57,8 @@ chmod +x "$HOME/.local/bin/ff"
 set -euo pipefail
 printf 'git %s\n' "$*" >> "${commandsLog}"
 if [ "$1" = "clone" ]; then
-  src="$4"
-  dest="$5"
+  src="$2"
+  dest="$3"
   mkdir -p "$dest"
   cp -R "$src"/. "$dest"/
   exit 0
@@ -52,21 +68,21 @@ exit 1
 `,
   );
 
-  const result = spawnSync("bash", ["scripts/bootstrap.sh"], {
+  const result = spawnSync("bash", [path.join("/home/balls/ff", "install.sh")], {
     cwd: "/home/balls/ff",
     env: {
       ...process.env,
       HOME: homeDir,
       PATH: `${fakeBinDir}:${process.env.PATH ?? ""}`,
       FF_REPO_URL: fakeRemote,
-      FF_INSTALL_DIR: installDir,
+      FF_HOME: installDir,
       FF_BIN_DIR: localBinDir,
     },
     encoding: "utf8",
   });
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
-  assert.equal(fs.existsSync(path.join(installDir, "scripts", "install.sh")), true);
+  assert.equal(fs.existsSync(path.join(installDir, "install.sh")), true);
   assert.equal(fs.existsSync(path.join(localBinDir, "ff")), true);
-  assert.match(fs.readFileSync(commandsLog, "utf8"), /git clone --depth 1/);
+  assert.match(fs.readFileSync(commandsLog, "utf8"), /git clone/);
 });

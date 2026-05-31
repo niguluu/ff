@@ -58,5 +58,10 @@ export function renderScreen(state: ScreenState, width = 80): string {
   lines.push("");
   lines.push(`Status: ${theme.fg("accent", state.status)}`);
 
+  if (state.input !== undefined) {
+    lines.push("");
+    lines.push(`${theme.fg("dim", ">")} ${state.input}${theme.fg("dim", "█")}`);
+  }
+
   return lines.join("\n");
 }

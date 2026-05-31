@@ -4,7 +4,7 @@ set -euo pipefail
 FF_HOME="${FF_HOME:-$HOME/.ff}"
 BIN_DIR="${FF_BIN_DIR:-$HOME/.local/bin}"
 LAUNCHER="$BIN_DIR/ff"
-REPO="https://github.com/niguluu/ff.git"
+REPO="${FF_REPO_URL:-https://github.com/niguluu/ff.git}"
 
 ensure_mise() {
   if command -v mise >/dev/null 2>&1 || [ -x "$HOME/.local/bin/mise" ]; then
