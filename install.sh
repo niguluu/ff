@@ -15,8 +15,13 @@ if ! command -v bun &>/dev/null; then
 fi
 
 # Detect if we're being piped (not run from a local repo)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ ! -f "$SCRIPT_DIR/package.json" ]]; then
+if [[ -z "${BASH_SOURCE[0]:-}" ]] || [[ "${BASH_SOURCE[0]}" == "bash" ]]; then
+  SCRIPT_DIR=""
+else
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+
+if [[ -z "$SCRIPT_DIR" ]] || [[ ! -f "$SCRIPT_DIR/package.json" ]]; then
   TMP_DIR="$(mktemp -d)"
   echo "==> Cloning $REPO_URL..."
   git clone --depth 1 "$REPO_URL" "$TMP_DIR"
