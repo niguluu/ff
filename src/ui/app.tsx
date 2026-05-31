@@ -90,7 +90,9 @@ export default function App() {
     wrapInputToVisualLines(input, promptContentWidth).length
   );
   const promptContentHeight = Math.min(promptMaxContentHeight, promptLineCount);
-  const inputHeight = promptContentHeight + 2;
+  // InputPanel renders exactly `promptContentHeight` rows (no border), so the
+  // reserved height must match it; otherwise the layout sum drifts from termRows.
+  const inputHeight = promptContentHeight;
   const statusHeight = 1;
   const dividerHeight = 1;
   const topDividerHeight = 1;
@@ -307,38 +309,45 @@ export default function App() {
         </Box>
       )}
 
-      {sessionPicker ? (
-        <SessionPicker
-          sessions={sessionPicker}
-          width={termCols}
-          height={msgAreaHeight}
-        />
-      ) : (
-        <MessageViewport
-          width={termCols}
-          height={msgAreaHeight}
-          messages={messages}
-          viewport={viewport}
-          expandedTools={expandedTools}
-          isConnecting={isConnecting}
-          isStreaming={isStreaming}
-          streamingText={streamingText}
-        />
-      )}
+      {/* Message area absorbs any layout pressure first (shrinks/clips internally
+          via its own overflow:hidden) so the fixed prompt/status below it can
+          never be overlapped by streaming output. */}
+      <Box flexDirection="column" width={termCols} flexShrink={1} overflow="hidden">
+        {sessionPicker ? (
+          <SessionPicker
+            sessions={sessionPicker}
+            width={termCols}
+            height={msgAreaHeight}
+          />
+        ) : (
+          <MessageViewport
+            width={termCols}
+            height={msgAreaHeight}
+            messages={messages}
+            viewport={viewport}
+            expandedTools={expandedTools}
+            isConnecting={isConnecting}
+            isStreaming={isStreaming}
+            streamingText={streamingText}
+          />
+        )}
+      </Box>
 
-      <Box height={topDividerHeight} width={termCols} overflow="hidden">
+      <Box height={topDividerHeight} width={termCols} flexShrink={0} overflow="hidden">
         <Text color={SEPARATOR_COLOR}>{"─".repeat(termCols)}</Text>
       </Box>
 
-      <InputPanel
-        input={input}
-        cursorPos={cursorPos}
-        width={termCols}
-        maxVisibleLines={promptContentHeight}
-        status={status}
-      />
+      <Box flexDirection="column" width={termCols} flexShrink={0}>
+        <InputPanel
+          input={input}
+          cursorPos={cursorPos}
+          width={termCols}
+          maxVisibleLines={promptContentHeight}
+          status={status}
+        />
+      </Box>
 
-      <Box height={dividerHeight} width={termCols} overflow="hidden">
+      <Box height={dividerHeight} width={termCols} flexShrink={0} overflow="hidden">
         <Text color={SEPARATOR_COLOR}>{"─".repeat(termCols)}</Text>
       </Box>
 

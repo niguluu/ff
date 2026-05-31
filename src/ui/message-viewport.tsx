@@ -56,30 +56,34 @@ export function MessageViewport({
       width={width}
       overflow="hidden"
     >
-      <FillLines count={fillCount} width={width} />
-
       {hasMessages && hasMoreAbove && (
         <Box flexDirection="row" height={1}>
           <Text color={MUTED_COLOR}>{padToWidth(`↑ ${linesAbove}`, width)}</Text>
         </Box>
       )}
 
-      {visibleMessages.map((message, index) => (
-        <Box
-          key={visibleStart + index}
-          flexDirection="column"
-          width={width}
-          overflow="hidden"
-        >
-          <MessageLine
-            msg={message}
+      {visibleMessages.map((message, index) => {
+        const absoluteIndex = visibleStart + index;
+        // Skip messages that render nothing (e.g. collapsed tool results) so no
+        // blank row is emitted between consecutive tool-call lines.
+        if ((viewport.messageHeights[absoluteIndex] ?? 0) === 0) return null;
+        return (
+          <Box
+            key={absoluteIndex}
+            flexDirection="column"
             width={width}
-            index={visibleStart + index}
-            isExpanded={expandedTools.has(visibleStart + index)}
-            messages={messages}
-          />
-        </Box>
-      ))}
+            overflow="hidden"
+          >
+            <MessageLine
+              msg={message}
+              width={width}
+              index={absoluteIndex}
+              isExpanded={expandedTools.has(absoluteIndex)}
+              messages={messages}
+            />
+          </Box>
+        );
+      })}
 
       {isConnecting && clampedScroll === 0 && !isStreaming && (
         <Box flexDirection="row" width={width} overflow="hidden">
@@ -108,6 +112,10 @@ export function MessageViewport({
           <Text color={MUTED_COLOR}>{padToWidth(`↓ ${clampedScroll}`, width)}</Text>
         </Box>
       )}
+
+      {/* Fill rendered last so content sits at the top of the viewport when it
+          fits, while overflow still clips the oldest lines (flex-end). */}
+      <FillLines count={fillCount} width={width} />
     </Box>
   );
 }
