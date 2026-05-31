@@ -119,11 +119,14 @@ export default function App() {
       clearTimeout(flushTimerRef.current);
       flushTimerRef.current = null;
     }
-    const chunk = streamingRef.current;
-    if (!chunk) return;
+    // The live token stream is intentionally hidden behind a single "thinking…"
+    // line (see message-viewport.tsx), so we deliberately do NOT push the
+    // streamed chunks into React state. Doing so previously forced ~30 full
+    // transcript re-renders per second while the agent was thinking, and Ink's
+    // rapid redraws left stale characters on screen (the "tool output bleeding"
+    // glitch). We just drain the ref; the final text comes from the LLM call's
+    // return value, not from this buffer.
     streamingRef.current = "";
-    setStreamingText((prev) => prev + chunk);
-    setScrollLines((prev) => (shouldAutoScroll(prev) ? 0 : prev));
   }, []);
 
   const scheduleFlush = useCallback(() => {
@@ -135,6 +138,11 @@ export default function App() {
 
   const appendMessage = useCallback((message: Message) => {
     setMessages((prev) => [...prev, message]);
+    // Follow new content (assistant replies, tool results) to the bottom when
+    // the user hasn't scrolled up. Auto-scroll now lives here, on real message
+    // appends, instead of on every streamed token — keeping the transcript
+    // static while the agent thinks.
+    setScrollLines((prev) => (shouldAutoScroll(prev) ? 0 : prev));
   }, []);
 
   const clearCopyFeedbackLater = useCallback(() => {

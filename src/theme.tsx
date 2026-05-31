@@ -10,9 +10,17 @@ import { THEME_BG } from "./config.js";
  * ANSI — Ink handles styling via props), so a simple length check is fine.
  */
 export function padToWidth(line: string, width: number): string {
-  const len = [...line].length;
-  if (len >= width) return line;
-  return line + " ".repeat(width - len);
+  if (width <= 0) return "";
+  const chars = [...line];
+  // Truncate over-width content so a single logical line never wraps onto extra
+  // physical rows. Without this, long tool lines (e.g. a `run_command` summary
+  // with a big command) overflowed the terminal width and wrapped, while the
+  // viewport's height accounting assumed a single row — leaving stale, bleeding
+  // text on screen. Clamping every themed line to exactly `width` keeps each
+  // tool (and its sub-tool result) on one line.
+  if (chars.length > width) return chars.slice(0, width).join("");
+  if (chars.length === width) return line;
+  return line + " ".repeat(width - chars.length);
 }
 
 /**

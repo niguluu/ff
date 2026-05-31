@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import {
   executeLLMCall,
   extractToolInvocations,
@@ -7,6 +9,49 @@ import { MAX_TOOL_ROUNDS } from "./config.js";
 import { pruneMessages } from "./conversation.js";
 import { formatToolResultForDisplay } from "./message-format.js";
 import { executeToolInvocation, isReadOnlyTool } from "./tools-registry.js";
+import { logger } from "./logger.js";
+
+const WORKING_DIR = resolve(process.env.WORKING_DIR || process.cwd());
+// Keep the injected index from blowing up the context on very large projects.
+const MAX_INDEX_CHARS = Number(process.env.FFF_MAX_INDEX_CHARS ?? "60000");
+// How often (in user prompts) to attach the codebase index to the request.
+const INDEX_INJECT_EVERY = Number(process.env.FFF_INDEX_INJECT_EVERY ?? "10");
+
+// Counts user prompts across the whole session so we can re-attach the codebase
+// index every Nth prompt (prompt 1, 11, 21, …) rather than on every request.
+let promptsHandled = 0;
+
+/** Read codebase-index.yaml from the working dir, or null if it's missing. */
+async function loadCodebaseIndex(): Promise<string | null> {
+  try {
+    const text = await readFile(join(WORKING_DIR, "codebase-index.yaml"), "utf-8");
+    if (!text.trim()) return null;
+    if (text.length > MAX_INDEX_CHARS) {
+      return `${text.slice(0, MAX_INDEX_CHARS)}\n# …[truncated]`;
+    }
+    return text;
+  } catch {
+    return null;
+  }
+}
+
+// Inject the index as an early user message (right after the system prompt) so
+// the model treats it as background context. It is added only to the array sent
+// to the LLM — never to the persisted conversation/transcript — so it does not
+// accumulate or clutter the visible history.
+function withCodebaseIndex(messages: Message[], indexText: string): Message[] {
+  const indexMsg: Message = {
+    role: "user",
+    content: `Here is the current codebase index for context (codebase-index.yaml):\n\n${indexText}`,
+  };
+  const sysIdx = messages.findIndex((m) => m.role === "system");
+  if (sysIdx === -1) return [indexMsg, ...messages];
+  return [
+    ...messages.slice(0, sysIdx + 1),
+    indexMsg,
+    ...messages.slice(sysIdx + 1),
+  ];
+}
 
 export type RunAgentOptions = {
   conversation: Message[];
@@ -48,6 +93,19 @@ export async function runAgent(options: RunAgentOptions) {
   if (isActiveRef.current) return conversation;
   isActiveRef.current = true;
 
+  // Attach the codebase index to the request once every INDEX_INJECT_EVERY
+  // prompts (the first prompt of each block: 1, 11, 21, …).
+  promptsHandled++;
+  const shouldInjectIndex = (promptsHandled - 1) % INDEX_INJECT_EVERY === 0;
+  let indexText: string | null = null;
+  if (shouldInjectIndex) {
+    indexText = await loadCodebaseIndex();
+    logger.info("agent", "codebase index injection", {
+      prompt: promptsHandled,
+      attached: indexText !== null,
+    });
+  }
+
   let conv: Message[] = [...conversation, { role: "user", content: userInput }];
   onConversationChange(conv);
   onMessage({ role: "user", content: userInput });
@@ -74,7 +132,10 @@ export async function runAgent(options: RunAgentOptions) {
 
     let assistantResponse: string;
     try {
-      assistantResponse = await executeLLMCall(pruneMessages(conv), (chunk) => {
+      const llmMessages = indexText
+        ? withCodebaseIndex(pruneMessages(conv), indexText)
+        : pruneMessages(conv);
+      assistantResponse = await executeLLMCall(llmMessages, (chunk) => {
         streamingRef.current += chunk;
         scheduleFlush();
       });
