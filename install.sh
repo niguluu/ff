@@ -41,6 +41,11 @@ mkdir -p "$INSTALL_DIR/dist"
 cp -f dist/index.js "$INSTALL_DIR/dist/"
 cp -f package.json "$INSTALL_DIR/" 2>/dev/null || true
 
+# Copy yoga.wasm so Ink's bundled layout engine works when moved
+if [[ -f "node_modules/yoga-wasm-web/dist/yoga.wasm" ]]; then
+  cp -f "node_modules/yoga-wasm-web/dist/yoga.wasm" "$INSTALL_DIR/dist/"
+fi
+
 # .env
 if [[ ! -f "$INSTALL_DIR/.env" ]]; then
   if [[ -f "$SCRIPT_DIR/.env" ]]; then
