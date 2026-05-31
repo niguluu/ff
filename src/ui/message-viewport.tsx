@@ -1,19 +1,14 @@
 import React from "react";
 import { Box, Text } from "ink";
-import type { Message } from "./llm.js";
-import { ASSISTANT_COLOR, MUTED_COLOR, STATUS_BUSY_COLOR } from "./config.js";
-import { FillLines, padToWidth } from "./theme.js";
+import type { Message } from "../llm/llm";
+import { ASSISTANT_COLOR, MUTED_COLOR, STATUS_BUSY_COLOR } from "../core/config";
+import { FillLines, padToWidth } from "./theme";
 
-// While the agent works we deliberately HIDE its raw streaming/tool output.
-// The user only wants to see the final, structured result — never the live
-// internal token stream (e.g. half-written sentences like "own process group
-// and kills the whole t"). So this is intentionally a single, content-free
-// status line.
 function getStreamingPreview() {
   return ["thinking…"];
 }
-import { MessageLine } from "./message-line.js";
-import type { ViewportModel } from "./viewport.js";
+import { MessageLine } from "./message-line";
+import type { ViewportModel } from "./viewport";
 
 type MessageViewportProps = {
   width: number;
@@ -42,10 +37,6 @@ export function MessageViewport({
   const streamingLines = isStreaming ? getStreamingPreview() : [];
   const hasMessages = messages.length > 0 || isConnecting || isStreaming;
 
-  // Compute how many themed blank rows we need to fill the empty space ABOVE
-  // the transcript so the Gruvbox background paints the whole area (rather than
-  // leaving the terminal's default background in the gap). We render exactly the
-  // gap — never an overflow — so the flex layout can't shrink real content.
   const visibleMessageLines = viewport.messageHeights
     .slice(viewport.visibleStart)
     .reduce((sum, value) => sum + value, 0);
@@ -65,11 +56,6 @@ export function MessageViewport({
       width={width}
       overflow="hidden"
     >
-      {/* Themed blank rows that fill any empty space above the transcript. They
-          are rendered first and clipped from the top by the flex-end + hidden
-          overflow, so they paint exactly the gap and never push content. This
-          is what makes the Gruvbox background cover the whole screen even on
-          terminals that ignore the OSC 11 default-background escape. */}
       <FillLines count={fillCount} width={width} />
 
       {hasMessages && hasMoreAbove && (

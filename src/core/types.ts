@@ -1,4 +1,4 @@
-import type { Message } from "./llm.js";
+import type { Message } from "../llm/llm";
 
 export type AppStatus = "idle" | "thinking";
 

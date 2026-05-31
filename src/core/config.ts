@@ -1,4 +1,4 @@
-import { getSystemPrompt } from "./llm.js";
+import { getSystemPrompt } from "../llm/llm";
 
 export const SYSTEM_PROMPT = getSystemPrompt();
 
@@ -27,29 +27,15 @@ export const TOOL_ERROR_COLOR = GRUVBOX_RED;
 export const ERROR_COLOR = GRUVBOX_RED;
 export const MUTED_COLOR = GRUVBOX_FG_DIM;
 export const BORDER_COLOR = GRUVBOX_BG3;
-// Brighter accent used for the prompt frame and the divider above the status
-// bar so the three regions (transcript / prompt / status) are clearly separated.
 export const PROMPT_ACCENT_COLOR = GRUVBOX_BLUE;
 export const SEPARATOR_COLOR = GRUVBOX_BG3;
 export const TEXT_COLOR = GRUVBOX_FG;
 export const STATUS_SUCCESS_COLOR = GRUVBOX_GREEN;
 export const STATUS_BUSY_COLOR = GRUVBOX_ORANGE;
-// The theme background. We paint this explicitly on every rendered cell (via
-// Ink's per-Text `backgroundColor`) instead of relying solely on the terminal
-// OSC 11 "default background" escape — many terminals ignore OSC 11, which is
-// why the Gruvbox theme previously looked "not absolute" depending on the
-// terminal. Painting per-cell makes the theme consistent everywhere.
 export const THEME_BG = GRUVBOX_BG;
 
-// Model context window. Used to render the "context used" indicator in the
-// status bar. The target model has a 1M-token window, so we default to that and
-// do NOT artificially shrink the agent's budget. Override via env if needed.
 export const CONTEXT_BUDGET = Number(process.env.LLM_CONTEXT_BUDGET ?? "1000000");
-
 export const MAX_TOOL_ROUNDS = Number(process.env.MAX_TOOL_ROUNDS ?? "100");
-// We do not want to limit the agent: with a 1M context window we keep the full
-// conversation by default. Pruning only kicks in if the user explicitly sets a
-// smaller MAX_CONVERSATION_MESSAGES.
 export const MAX_CONVERSATION_MESSAGES = Number(
   process.env.MAX_CONVERSATION_MESSAGES ?? "100000"
 );

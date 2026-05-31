@@ -4,7 +4,7 @@ import {
   editFileTool,
   atomicOverwriteTool,
   runCommandTool,
-} from "./tools.js";
+} from "./tools";
 
 const TOOL_REGISTRY = {
   read_file: readFileTool,

@@ -4,24 +4,19 @@ import {
   executeLLMCall,
   extractToolInvocations,
   type Message,
-} from "./llm.js";
-import { MAX_TOOL_ROUNDS } from "./config.js";
-import { pruneMessages } from "./conversation.js";
-import { formatToolResultForDisplay } from "./message-format.js";
-import { executeToolInvocation, isReadOnlyTool } from "./tools-registry.js";
-import { logger } from "./logger.js";
+} from "../llm/llm";
+import { MAX_TOOL_ROUNDS } from "./config";
+import { pruneMessages } from "./conversation";
+import { formatToolResultForDisplay } from "../utils/message-format";
+import { executeToolInvocation, isReadOnlyTool } from "../tools/tools-registry";
+import { logger } from "../utils/logger";
 
 const WORKING_DIR = resolve(process.env.WORKING_DIR || process.cwd());
-// Keep the injected index from blowing up the context on very large projects.
 const MAX_INDEX_CHARS = Number(process.env.FFF_MAX_INDEX_CHARS ?? "60000");
-// How often (in user prompts) to attach the codebase index to the request.
 const INDEX_INJECT_EVERY = Number(process.env.FFF_INDEX_INJECT_EVERY ?? "10");
 
-// Counts user prompts across the whole session so we can re-attach the codebase
-// index every Nth prompt (prompt 1, 11, 21, …) rather than on every request.
 let promptsHandled = 0;
 
-/** Read codebase-index.yaml from the working dir, or null if it's missing. */
 async function loadCodebaseIndex(): Promise<string | null> {
   try {
     const text = await readFile(join(WORKING_DIR, "codebase-index.yaml"), "utf-8");
@@ -35,10 +30,6 @@ async function loadCodebaseIndex(): Promise<string | null> {
   }
 }
 
-// Inject the index as an early user message (right after the system prompt) so
-// the model treats it as background context. It is added only to the array sent
-// to the LLM — never to the persisted conversation/transcript — so it does not
-// accumulate or clutter the visible history.
 function withCodebaseIndex(messages: Message[], indexText: string): Message[] {
   const indexMsg: Message = {
     role: "user",
@@ -93,8 +84,6 @@ export async function runAgent(options: RunAgentOptions) {
   if (isActiveRef.current) return conversation;
   isActiveRef.current = true;
 
-  // Attach the codebase index to the request once every INDEX_INJECT_EVERY
-  // prompts (the first prompt of each block: 1, 11, 21, …).
   promptsHandled++;
   const shouldInjectIndex = (promptsHandled - 1) % INDEX_INJECT_EVERY === 0;
   let indexText: string | null = null;

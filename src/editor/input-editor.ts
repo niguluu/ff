@@ -1,5 +1,5 @@
-import { nextGraphemeBoundary, prevGraphemeBoundary } from "./text-segmentation.js";
-import { findWordBackward, findWordForward } from "./word-navigation.js";
+import { nextGraphemeBoundary, prevGraphemeBoundary } from "../utils/text-segmentation";
+import { findWordBackward, findWordForward } from "../utils/word-navigation";
 
 export type InputHistoryRefs = {
   history: { current: string[] };
@@ -28,9 +28,6 @@ export function insertText(state: InputEditorState, text: string) {
 
 export function backspaceText(state: InputEditorState) {
   if (state.cursorPos <= 0) return state;
-  // Grapheme-aware deletion: remove the whole grapheme cluster before the
-  // cursor so emoji / CJK / combining sequences are not split into invalid
-  // code units (which previously desynced cursorPos from input.length).
   const start = prevGraphemeBoundary(state.input, state.cursorPos);
   const before = state.input.slice(0, start);
   const after = state.input.slice(state.cursorPos);
@@ -51,12 +48,11 @@ export function deleteForwardText(state: InputEditorState) {
 
 export type KillResult = { state: InputEditorState; killed: string };
 
-/** Ctrl+K — kill from the cursor to the end of the current logical line. */
 export function killToLineEnd(state: InputEditorState): KillResult {
   const { input, cursorPos } = state;
   let end = moveCursorToLineEnd(input, cursorPos);
   if (end === cursorPos && input[cursorPos] === "\n") {
-    end = cursorPos + 1; // at end of line: kill the line break itself
+    end = cursorPos + 1;
   }
   const killed = input.slice(cursorPos, end);
   return {
@@ -65,7 +61,6 @@ export function killToLineEnd(state: InputEditorState): KillResult {
   };
 }
 
-/** Ctrl+U — kill from the start of the current logical line to the cursor. */
 export function killToLineStart(state: InputEditorState): KillResult {
   const { input, cursorPos } = state;
   const start = moveCursorToLineStart(input, cursorPos);
@@ -76,7 +71,6 @@ export function killToLineStart(state: InputEditorState): KillResult {
   };
 }
 
-/** Alt+Backspace / Ctrl+W — kill the word before the cursor. */
 export function killWordBackward(state: InputEditorState): KillResult {
   const { input, cursorPos } = state;
   const start = findWordBackward(input, cursorPos);
@@ -87,7 +81,6 @@ export function killWordBackward(state: InputEditorState): KillResult {
   };
 }
 
-/** Alt+D — kill the word after the cursor. */
 export function killWordForward(state: InputEditorState): KillResult {
   const { input, cursorPos } = state;
   const end = findWordForward(input, cursorPos);

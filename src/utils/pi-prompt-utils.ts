@@ -94,8 +94,6 @@ export function moveCursorUpVisual(
 
   const currentVL = visualLines[visualLineIndex]!;
   const targetVL = visualLines[visualLineIndex - 1]!;
-  // Sticky column: prefer the remembered column so moving up then down (or
-  // across short lines) returns to the original column when possible.
   const visualCol = preferredVisualCol ?? cursorCol - currentVL.startCol;
 
   const lines = input.split("\n");
@@ -122,7 +120,6 @@ export function moveCursorDownVisual(
 
   const currentVL = visualLines[visualLineIndex]!;
   const targetVL = visualLines[visualLineIndex + 1]!;
-  // Sticky column: see moveCursorUpVisual.
   const visualCol = preferredVisualCol ?? cursorCol - currentVL.startCol;
 
   const lines = input.split("\n");
@@ -146,10 +143,6 @@ export function getCursorVisualLineIndex(input: string, cursorPos: number, width
   return getCursorVisualInfo(input, cursorPos, width).visualLineIndex;
 }
 
-/**
- * The cursor's column relative to the start of its current visual (wrapped)
- * line. Used to seed the sticky `preferredVisualCol` for up/down navigation.
- */
 export function getCursorVisualCol(input: string, cursorPos: number, width: number): number {
   const { visualLines, cursorCol, visualLineIndex } = getCursorVisualInfo(input, cursorPos, width);
   const currentVL = visualLines[visualLineIndex];

@@ -1,19 +1,9 @@
-// Non-interactive codebase indexer.
-//
-// Walks the project, asks the cheapest DeepSeek model for a one-line summary of
-// each source file, and writes `codebase-index.yaml`. Invoked via `fff index`
-// (see `src/index.tsx`) or `bun run index`.
-
 import OpenAI from "openai";
 import { readdir, readFile, writeFile, stat } from "node:fs/promises";
 import { join, relative, resolve, extname } from "node:path";
-import { logger } from "./logger.js";
+import { logger } from "../utils/logger";
 
 const ROOT = resolve(process.env.WORKING_DIR || process.cwd());
-
-// Cheapest DeepSeek model. Read directly from env (rather than importing from
-// llm.ts) so `fff index` works even without an API key — the indexer then falls
-// back to static descriptions instead of crashing on llm.ts's key check.
 const INDEX_MODEL = process.env.FFF_INDEX_MODEL ?? "deepseek-chat";
 
 const IGNORE_DIRS = new Set([
@@ -46,11 +36,9 @@ async function walk(dir: string, acc: string[]): Promise<void> {
   }
   for (const e of entries) {
     if (e.isDirectory()) {
-      // Skip ignored and hidden directories (e.g. .git, .junie, .cache).
       if (IGNORE_DIRS.has(e.name) || e.name.startsWith(".")) continue;
       await walk(join(dir, e.name), acc);
     } else if (e.isFile()) {
-      // Skip hidden files except documented examples.
       if (e.name.startsWith(".") && e.name !== ".env.example") continue;
       if (CODE_EXTS.has(extname(e.name)) || e.name === "package.json") {
         acc.push(join(dir, e.name));
@@ -66,7 +54,7 @@ async function collectFiles(): Promise<FileEntry[]> {
   for (const p of paths) {
     try {
       const s = await stat(p);
-      if (s.size > 200_000) continue; // skip huge/generated files
+      if (s.size > 200_000) continue;
       const text = await readFile(p, "utf-8");
       const head = text.split("\n").slice(0, 30).join("\n").slice(0, 1500);
       entries.push({ rel: relative(ROOT, p), head });
@@ -91,7 +79,6 @@ async function describeFiles(entries: FileEntry[]): Promise<Map<string, string>>
     baseURL: process.env.OPENAI_BASE_URL ?? "https://api.deepseek.com/v1",
   });
 
-  // Batch to keep each prompt small and cheap.
   const BATCH = 20;
   for (let i = 0; i < entries.length; i += BATCH) {
     const batch = entries.slice(i, i + BATCH);
@@ -153,7 +140,6 @@ async function readProjectMeta(): Promise<{ name: string; version: string; descr
   }
 }
 
-/** Build and write `codebase-index.yaml`, returning its absolute path. */
 export async function runIndexer(): Promise<string> {
   logger.info("indexer", "starting", { root: ROOT, model: INDEX_MODEL });
   const entries = await collectFiles();

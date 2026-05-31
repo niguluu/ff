@@ -1,5 +1,5 @@
-import type { ToolInvocation } from "./llm.js";
-import type { Segment } from "./types.js";
+import type { ToolInvocation } from "../llm/llm";
+import type { Segment } from "../core/types";
 
 export function wrapText(text: string, maxWidth: number): string[] {
   if (maxWidth <= 0) return [text];
@@ -80,14 +80,12 @@ export function parseToolDisplay(
   }
 }
 
-/** Show a path relative to the working directory when possible. */
 function shortenPath(path: string): string {
   const cwd = process.cwd();
   if (path.startsWith(cwd + "/")) return path.slice(cwd.length + 1);
   return path;
 }
 
-/** Compact "+added/-removed lines" suffix for an edit/write result. */
 function changeSummary(result: any): string {
   const added = typeof result.added === "number" ? result.added : null;
   const removed = typeof result.removed === "number" ? result.removed : null;
@@ -113,8 +111,6 @@ export function summarizeToolDisplay(name: string, result: any): string {
     case "edit_file": {
       const path = shortenPath(result.path ?? "unknown");
       const action = result.action ?? "done";
-      // The user only wants the final structure of the change, not the diff
-      // body: show the path plus a compact +added/-removed line summary.
       if (action === "edited" || action === "created_file") {
         const verb = action === "created_file" ? "create" : "edit";
         return `✏️ ${verb}: ${path}${changeSummary(result)}`;

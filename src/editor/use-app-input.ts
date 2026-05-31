@@ -1,7 +1,7 @@
 import { useInput } from "ink";
-import { extractToolInvocations, type Message } from "./llm.js";
-import { parseToolDisplay } from "./message-format.js";
-import { copyToClipboard } from "./clipboard.js";
+import { extractToolInvocations, type Message } from "../llm/llm";
+import { parseToolDisplay } from "../utils/message-format";
+import { copyToClipboard } from "../utils/clipboard";
 import {
   backspaceText,
   insertText,
@@ -15,20 +15,20 @@ import {
   navigateHistoryUp,
   type InputEditorState,
   type InputHistoryRefs,
-} from "./input-editor.js";
+} from "./input-editor";
 import {
   getCursorVisualCol,
   getCursorVisualLineIndex,
   getTotalVisualLines,
   moveCursorDownVisual,
   moveCursorUpVisual,
-} from "./pi-prompt-utils.js";
-import { findWordBackward, findWordForward } from "./word-navigation.js";
-import { prevGraphemeBoundary, nextGraphemeBoundary } from "./text-segmentation.js";
-import type { KillRing } from "./kill-ring.js";
-import type { UndoStack } from "./undo-stack.js";
-import type { PasteStore } from "./paste.js";
-import { isLargePaste, normalizePaste } from "./paste.js";
+} from "../utils/pi-prompt-utils";
+import { findWordBackward, findWordForward } from "../utils/word-navigation";
+import { prevGraphemeBoundary, nextGraphemeBoundary } from "../utils/text-segmentation";
+import type { KillRing } from "./kill-ring";
+import type { UndoStack } from "./undo-stack";
+import type { PasteStore } from "../utils/paste";
+import { isLargePaste, normalizePaste } from "../utils/paste";
 
 type UseAppInputArgs = {
   exit: () => void;
@@ -79,15 +79,6 @@ export function useAppInput(args: UseAppInputArgs) {
 
   const promptContentWidth = Math.max(1, termCols - 2);
 
-  // Some terminals (modifyOtherKeys / kitty keyboard protocol) encode
-  // Shift+Enter, Ctrl+Enter, etc. as a CSI escape sequence rather than a plain
-  // return event. Ink strips the leading ESC and hands us the rest, which used
-  // to be inserted verbatim as text (the infamous `[27;2;13~` glitch).
-  //
-  // Supported encodings for the Enter key (keycode 13):
-  //   xterm modifyOtherKeys: ESC [ 27 ; <mods> ; 13 ~
-  //   kitty CSI-u:           ESC [ 13 ; <mods> u
-  // `mods` is a 1-based bitmask: bit0 = Shift, bit1 = Alt, bit2 = Ctrl.
   function detectEnterEscape(char: string): { shift: boolean } | null {
     const m =
       /\x1b?\[27;(\d+);13~/.exec(char) || /\x1b?\[13;(\d+)u/.exec(char);
@@ -96,17 +87,10 @@ export function useAppInput(args: UseAppInputArgs) {
     return { shift: (mods & 1) === 1 };
   }
 
-  // SGR mouse reporting (enabled in src/index.tsx) delivers events as
-  // `ESC [ < <button> ; <col> ; <row> (M|m)`. Ink strips the leading ESC, so we
-  // see e.g. `[<64;..M` (wheel up) / `[<65;..M` (wheel down) or `[<0;..M`
-  // (button press). Returns `"up"`/`"down"` for the wheel, `"other"` for any
-  // other mouse event (so it can be swallowed rather than inserted as text), or
-  // `null` when the sequence is not a mouse event at all.
   function detectMouseEvent(char: string): "up" | "down" | "other" | null {
     const m = /\x1b?\[<(\d+);\d+;\d+[Mm]/.exec(char);
     if (!m) return null;
     const button = Number(m[1]);
-    // Bit 6 (value 64) marks a wheel event; bit 0 selects the direction.
     if ((button & 64) === 0) return "other";
     return (button & 1) === 1 ? "down" : "up";
   }
@@ -126,8 +110,6 @@ export function useAppInput(args: UseAppInputArgs) {
     onSubmit(expanded);
   }
 
-  // Apply a new editor state, recording an undo snapshot of the current state
-  // first. Horizontal edits/moves reset the sticky column.
   function commitEdit(next: InputEditorState, resetPreferredCol = true) {
     undoStack.push({ input, cursorPos });
     setInput(next.input);
@@ -141,9 +123,6 @@ export function useAppInput(args: UseAppInputArgs) {
   }
 
   useInput((char, key) => {
-    // Mouse-wheel scroll: move the transcript viewport instead of cycling the
-    // prompt history (which is what happened when the terminal translated the
-    // wheel into Up/Down arrows). Keyboard arrows still navigate history.
     if (char && char.length > 1) {
       const mouse = detectMouseEvent(char);
       if (mouse) {
@@ -153,8 +132,6 @@ export function useAppInput(args: UseAppInputArgs) {
         } else if (mouse === "down") {
           setScrollLines((prev) => Math.max(0, prev - WHEEL_STEP));
         }
-        // "other" mouse events (clicks/movement) are swallowed so their escape
-        // sequences are never inserted into the prompt as text.
         return;
       }
     }
@@ -164,7 +141,6 @@ export function useAppInput(args: UseAppInputArgs) {
       return;
     }
 
-    // Copy last assistant message (rebound from Ctrl+Y, which is now yank).
     if (key.ctrl && char === "o") {
       const lastAssistant = [...messages]
         .reverse()
@@ -199,8 +175,6 @@ export function useAppInput(args: UseAppInputArgs) {
       const totalLines = getTotalVisualLines(input, promptContentWidth);
       const promptOverflows = status === "idle" && totalLines > promptMaxContentHeight;
       if (promptOverflows) {
-        // Editor has focus and overflows: page the prompt cursor instead of
-        // the message viewport.
         if (preferredColRef.current === null) {
           preferredColRef.current = getCursorVisualCol(input, cursorPos, promptContentWidth);
         }
@@ -222,7 +196,6 @@ export function useAppInput(args: UseAppInputArgs) {
 
     if (status !== "idle") return;
 
-    // Undo (Ctrl+/ or Ctrl+_ — both arrive as the 0x1f control code).
     if ((key.ctrl && (char === "/" || char === "_")) || char === "\x1f") {
       const prev = undoStack.pop();
       if (prev) {
@@ -233,8 +206,6 @@ export function useAppInput(args: UseAppInputArgs) {
       return;
     }
 
-    // Terminal-encoded Enter (modifyOtherKeys / kitty). Handle this before the
-    // generic text-insertion path so the escape sequence is never inserted.
     if (char && char.length > 1) {
       const enter = detectEnterEscape(char);
       if (enter) {
@@ -257,7 +228,6 @@ export function useAppInput(args: UseAppInputArgs) {
       return;
     }
 
-    // Kill word backward (Alt+Backspace).
     if (key.meta && (key.backspace || key.delete)) {
       const result = killWordBackward({ input, cursorPos });
       killRing.push(result.killed, { prepend: true });
@@ -270,7 +240,6 @@ export function useAppInput(args: UseAppInputArgs) {
       return;
     }
 
-    // Kill word forward (Alt+D).
     if (key.meta && char === "d") {
       const result = killWordForward({ input, cursorPos });
       killRing.push(result.killed, { prepend: false });
@@ -278,7 +247,6 @@ export function useAppInput(args: UseAppInputArgs) {
       return;
     }
 
-    // Word navigation (Ctrl/Alt + arrows).
     if ((key.ctrl || key.meta) && key.leftArrow) {
       moveCursorTo(findWordBackward(input, cursorPos));
       return;
@@ -349,7 +317,6 @@ export function useAppInput(args: UseAppInputArgs) {
       return;
     }
 
-    // Kill to end of line (Ctrl+K).
     if (key.ctrl && char === "k") {
       const result = killToLineEnd({ input, cursorPos });
       killRing.push(result.killed, { prepend: false });
@@ -357,7 +324,6 @@ export function useAppInput(args: UseAppInputArgs) {
       return;
     }
 
-    // Kill to start of line (Ctrl+U).
     if (key.ctrl && char === "u") {
       const result = killToLineStart({ input, cursorPos });
       killRing.push(result.killed, { prepend: true });
@@ -365,7 +331,6 @@ export function useAppInput(args: UseAppInputArgs) {
       return;
     }
 
-    // Kill word backward (Ctrl+W).
     if (key.ctrl && char === "w") {
       const result = killWordBackward({ input, cursorPos });
       killRing.push(result.killed, { prepend: true });
@@ -373,7 +338,6 @@ export function useAppInput(args: UseAppInputArgs) {
       return;
     }
 
-    // Yank — paste most recent kill (Ctrl+Y).
     if (key.ctrl && char === "y") {
       const text = killRing.peek();
       if (text) commitEdit(insertText({ input, cursorPos }, text));
@@ -381,7 +345,6 @@ export function useAppInput(args: UseAppInputArgs) {
     }
 
     if (!key.ctrl && !key.meta && char) {
-      // A multi-character event is a terminal paste delivered as one chunk.
       if (char.length > 1) {
         const normalized = normalizePaste(char);
         if (!normalized) return;

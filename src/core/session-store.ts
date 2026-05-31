@@ -1,12 +1,3 @@
-// Persistent session storage for fff.
-//
-// Every conversation is written to a JSON file under ~/.fff/sessions so the
-// user can pick up where they left off. The store powers the `.new` (start a
-// fresh session) and `.resume` (list and reopen recent sessions) commands.
-//
-// Like the logger, this module must never take the UI down: all disk access is
-// wrapped and failures degrade to an in-memory-only session.
-
 import {
   mkdirSync,
   readdirSync,
@@ -15,8 +6,8 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { Message } from "./llm.js";
-import { logger } from "./logger.js";
+import type { Message } from "../llm/llm";
+import { logger } from "../utils/logger";
 
 export type StoredSession = {
   id: string;
@@ -24,9 +15,7 @@ export type StoredSession = {
   updatedAt: string;
   title: string;
   cwd: string;
-  /** Messages as shown in the viewport (includes tool-result display rows). */
   messages: Message[];
-  /** Full conversation sent to the model (includes the system prompt). */
   conversation: Message[];
 };
 
@@ -49,7 +38,6 @@ function newSessionId(): string {
   return new Date().toISOString().replace(/[:.]/g, "-");
 }
 
-/** Create a brand-new, empty session object (not yet written to disk). */
 export function createSession(cwd: string): StoredSession {
   const now = new Date().toISOString();
   return {
@@ -63,7 +51,6 @@ export function createSession(cwd: string): StoredSession {
   };
 }
 
-/** Persist a session to disk. Never throws. */
 export function saveSession(session: StoredSession): void {
   if (!ensureDir()) return;
   try {
@@ -74,7 +61,6 @@ export function saveSession(session: StoredSession): void {
   }
 }
 
-/** Load the most recent sessions, newest first. Never throws. */
 export function listSessions(limit = 10): StoredSession[] {
   try {
     const dir = sessionsDir();
@@ -96,7 +82,6 @@ export function listSessions(limit = 10): StoredSession[] {
   }
 }
 
-/** Load a single session by id. Returns null if missing/corrupt. */
 export function loadSession(id: string): StoredSession | null {
   try {
     const raw = readFileSync(join(sessionsDir(), `${id}.json`), "utf-8");
@@ -106,7 +91,6 @@ export function loadSession(id: string): StoredSession | null {
   }
 }
 
-/** Short, human-friendly label for a session in the `.resume` picker. */
 export function sessionLabel(session: StoredSession): string {
   const when = session.updatedAt.replace("T", " ").slice(0, 16);
   const title = session.title.trim() || "(empty session)";

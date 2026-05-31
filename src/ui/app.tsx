@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text, useApp, useStdout } from "ink";
-import { MODEL, type Message } from "./llm.js";
+import { MODEL, type Message } from "../llm/llm";
 import {
   ASSISTANT_COLOR,
   CONTEXT_BUDGET,
@@ -11,29 +11,29 @@ import {
   SYSTEM_PROMPT,
   TEXT_COLOR,
   YOU_COLOR,
-} from "./config.js";
-import { getVersion } from "./version.js";
-import { FillLines, padToWidth } from "./theme.js";
-import { wrapInputToVisualLines } from "./pi-prompt-utils.js";
-import { estimateTokens } from "./conversation.js";
+} from "../core/config";
+import { getVersion } from "../utils/version";
+import { FillLines, padToWidth } from "./theme";
+import { wrapInputToVisualLines } from "../utils/pi-prompt-utils";
+import { estimateTokens } from "../core/conversation";
 import {
   createSession,
   listSessions,
   saveSession,
   sessionLabel,
   type StoredSession,
-} from "./session-store.js";
-import { runAgent } from "./agent-runner.js";
-import { useAlternateScreen } from "./use-alternate-screen.js";
-import { shouldAutoScroll, buildViewportModel } from "./viewport.js";
-import { MessageViewport } from "./message-viewport.js";
-import { InputPanel } from "./input-panel.js";
-import { useAppInput } from "./use-app-input.js";
-import { KillRing } from "./kill-ring.js";
-import { UndoStack } from "./undo-stack.js";
-import { PasteStore } from "./paste.js";
-import type { InputEditorState } from "./input-editor.js";
-import type { AppStatus } from "./types.js";
+} from "../core/session-store";
+import { runAgent } from "../core/agent-runner";
+import { useAlternateScreen } from "./use-alternate-screen";
+import { shouldAutoScroll, buildViewportModel } from "./viewport";
+import { MessageViewport } from "./message-viewport";
+import { InputPanel } from "./input-panel";
+import { useAppInput } from "../editor/use-app-input";
+import { KillRing } from "../editor/kill-ring";
+import { UndoStack } from "../editor/undo-stack";
+import { PasteStore } from "../utils/paste";
+import type { InputEditorState } from "../editor/input-editor";
+import type { AppStatus } from "../core/types";
 
 export default function App() {
   const { exit } = useApp();
@@ -67,12 +67,10 @@ export default function App() {
   const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [termSize, setTermSize] = useState(() => [stdout.columns || 80, stdout.rows || 24]);
-  const termCols = termSize[0];
-  const termRows = termSize[1];
+  const [termSize, setTermSize] = useState(() => [stdout.columns ?? 80, stdout.rows ?? 24]);
+  const termCols = termSize[0]!;
+  const termRows = termSize[1]!;
 
-  // Listen for terminal resize events so the UI re-renders with the new
-  // dimensions immediately instead of staying stuck at the original size.
   useEffect(() => {
     function onResize() {
       setTermSize([stdout.columns || 80, stdout.rows || 24]);
@@ -83,13 +81,8 @@ export default function App() {
     };
   }, [stdout]);
 
-  // Whether to show the tips bar at the top-right. Defined early so height
-  // calculations can account for it.
   const showTips = messages.length === 0 && !isConnecting && !isStreaming;
 
-  // The prompt is compact: it starts at a single line and grows with the input
-  // only up to a small cap (never the old ~30% of the screen). This keeps the
-  // box small while still letting multi-line input expand when needed.
   const promptMaxContentHeight = Math.min(8, Math.max(3, Math.floor(termRows * 0.2)));
   const promptContentWidth = Math.max(1, termCols - 2);
   const promptLineCount = Math.max(
@@ -97,8 +90,6 @@ export default function App() {
     wrapInputToVisualLines(input, promptContentWidth).length
   );
   const promptContentHeight = Math.min(promptMaxContentHeight, promptLineCount);
-  // InputPanel renders: top border (1) + content (promptContentHeight) +
-  // bottom border (1). Reserve exactly that so nothing overflows/overlaps.
   const inputHeight = promptContentHeight + 2;
   const statusHeight = 1;
   const dividerHeight = 1;
@@ -124,13 +115,6 @@ export default function App() {
       clearTimeout(flushTimerRef.current);
       flushTimerRef.current = null;
     }
-    // The live token stream is intentionally hidden behind a single "thinking…"
-    // line (see message-viewport.tsx), so we deliberately do NOT push the
-    // streamed chunks into React state. Doing so previously forced ~30 full
-    // transcript re-renders per second while the agent was thinking, and Ink's
-    // rapid redraws left stale characters on screen (the "tool output bleeding"
-    // glitch). We just drain the ref; the final text comes from the LLM call's
-    // return value, not from this buffer.
     streamingRef.current = "";
   }, []);
 
@@ -143,10 +127,6 @@ export default function App() {
 
   const appendMessage = useCallback((message: Message) => {
     setMessages((prev) => [...prev, message]);
-    // Follow new content (assistant replies, tool results) to the bottom when
-    // the user hasn't scrolled up. Auto-scroll now lives here, on real message
-    // appends, instead of on every streamed token — keeping the transcript
-    // static while the agent thinks.
     setScrollLines((prev) => (shouldAutoScroll(prev) ? 0 : prev));
   }, []);
 
@@ -155,8 +135,6 @@ export default function App() {
     copyTimerRef.current = setTimeout(() => setCopyFeedback(""), 1500);
   }, []);
 
-  // Persist the active session whenever the visible transcript changes so a
-  // crash or quit never loses work and `.resume` can reopen it.
   useEffect(() => {
     if (messages.length === 0) return;
     const session = sessionRef.current;
@@ -209,8 +187,6 @@ export default function App() {
   const handleSubmit = useCallback((text: string) => {
     const trimmed = text.trim();
 
-    // Slash-style session commands are handled locally and never sent to the
-    // model.
     if (trimmed === ".new") {
       startNewSession();
       return;
@@ -233,7 +209,6 @@ export default function App() {
       return;
     }
 
-    // While the picker is open a bare number selects a session.
     if (sessionPicker && /^\d+$/.test(trimmed)) {
       const picked = sessionPicker[Number(trimmed) - 1];
       if (picked) loadSessionIntoState(picked);
@@ -276,8 +251,8 @@ export default function App() {
     cursorPos,
     status,
     msgAreaHeight,
-    termCols,
     promptMaxContentHeight,
+    termCols,
     historyRefs: {
       history: historyRef,
       historyIndex: historyIndexRef,
@@ -298,8 +273,6 @@ export default function App() {
 
   const assistantCount = messages.filter((message) => message.role === "assistant").length;
 
-  // Context-used indicator. We can only estimate (no in-loop tokenizer), so
-  // this is a guide, not an exact figure.
   const ctxPct = Math.min(100, Math.round((contextTokens / CONTEXT_BUDGET) * 100));
   const ctxColor =
     ctxPct >= 85 ? STATUS_BUSY_COLOR : ctxPct >= 60 ? ASSISTANT_COLOR : MUTED_COLOR;
@@ -313,7 +286,6 @@ export default function App() {
 
   return (
     <Box flexDirection="column" height={termRows} width={termCols} overflow="hidden">
-      {/* Fixed tips bar at the top-right, always visible and never scrolls. */}
       {showTips && (
         <Box flexDirection="row" width={termCols} flexShrink={0} justifyContent="flex-end">
           <Text color={MUTED_COLOR}>
@@ -358,7 +330,6 @@ export default function App() {
         status={status}
       />
 
-      {/* Divider that visually separates the prompt from the status bar. */}
       <Box height={dividerHeight} width={termCols} overflow="hidden">
         <Text color={SEPARATOR_COLOR}>{"─".repeat(termCols)}</Text>
       </Box>
@@ -380,18 +351,11 @@ export default function App() {
   );
 }
 
-/** Compact token count, e.g. 1234 -> "1.2k". */
 function formatTokens(n: number): string {
   if (n < 1000) return String(n);
   return `${(n / 1000).toFixed(1)}k`;
 }
 
-/**
- * The bottom status line. Built as one explicitly themed, full-width row: the
- * left/center/right groups are separated by background-painted spacer cells
- * (instead of unpainted flexGrow gaps) so the Gruvbox background spans the
- * entire line on every terminal.
- */
 function StatusBar({
   width,
   height,
@@ -456,7 +420,7 @@ function SessionPicker({
   width: number;
   height: number;
 }) {
-  const used = 2 + 1 + sessions.length; // title + subtitle + blank + rows
+  const used = 2 + 1 + sessions.length;
   return (
     <Box flexDirection="column" justifyContent="flex-end" height={height} width={width} overflow="hidden">
       <FillLines count={Math.max(0, height - used)} width={width} />

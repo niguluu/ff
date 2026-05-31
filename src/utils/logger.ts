@@ -1,9 +1,3 @@
-// Lightweight append-only logger for the fff agent.
-//
-// Logs are written to a per-session file so a crash, a runaway command, or an
-// unexpected exit leaves a trace the user can inspect. Logging never throws —
-// it must never take the UI down with it.
-
 import { appendFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -48,7 +42,6 @@ function serialize(value: unknown): string {
   }
 }
 
-/** Append a single structured line to the current session log. Never throws. */
 export function log(level: LogLevel, scope: string, message: string, data?: unknown): void {
   if (!ensureDir()) return;
   try {
@@ -67,7 +60,6 @@ export const logger = {
   error: (scope: string, message: string, data?: unknown) => log("error", scope, message, data),
 };
 
-/** Absolute path to the active session log file. */
 export function getLogFile(): string {
   return LOG_FILE;
 }

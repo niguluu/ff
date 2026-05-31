@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Text } from "ink";
-import { extractToolInvocations, type Message } from "./llm.js";
+import { extractToolInvocations, type Message } from "../llm/llm";
 import {
   ASSISTANT_COLOR,
   ERROR_COLOR,
@@ -12,15 +12,15 @@ import {
   TOOL_READ_COLOR,
   TOOL_WRITE_COLOR,
   YOU_COLOR,
-} from "./config.js";
-import { padToWidth } from "./theme.js";
+} from "../core/config";
+import { padToWidth } from "./theme";
 import {
   formatToolCallArgs,
   parseSegments,
   parseToolDisplay,
   summarizeToolDisplay,
   wrapText,
-} from "./message-format.js";
+} from "../utils/message-format";
 
 export function getMessageHeight(
   message: Message,

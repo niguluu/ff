@@ -2,15 +2,11 @@ import { mkdir, readdir, rename, unlink } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
 import { homedir } from "node:os";
 import { spawn } from "node:child_process";
-import { logger } from "./logger.js";
-import { registerChild, unregisterChild, killChild } from "./process-registry.js";
+import { logger } from "../utils/logger";
+import { registerChild, unregisterChild, killChild } from "../core/process-registry";
 
 const WORKING_DIR = resolve(process.env.WORKING_DIR || process.cwd());
-
-// Default ceiling for a single command. Long-running servers should be started
-// in the background by the model rather than blocking the agent loop.
 const DEFAULT_COMMAND_TIMEOUT_MS = Number(process.env.FFF_COMMAND_TIMEOUT_MS ?? "120000");
-// Cap captured output so a chatty command cannot blow up the conversation.
 const MAX_OUTPUT_CHARS = Number(process.env.FFF_MAX_OUTPUT_CHARS ?? "20000");
 
 export interface ToolMetadata {
@@ -27,7 +23,6 @@ export function resolveAbsPath(pathStr: string): string {
   const resolved = resolve(WORKING_DIR, p);
   const realResolved = resolve(resolved);
   const realWorking = resolve(WORKING_DIR);
-  // Ensure the check boundary is at a directory separator to prevent prefix attacks
   const isInside =
     realResolved === realWorking ||
     realResolved.startsWith(realWorking + sep);
@@ -103,7 +98,6 @@ export async function runCommandTool(command: string, timeoutMs?: number) {
     let timedOut = false;
     let settled = false;
 
-    // detached: own process group so we can kill the whole tree via -pid.
     const child = spawn(cmd, {
       cwd: WORKING_DIR,
       shell: "/bin/bash",
@@ -156,7 +150,6 @@ export async function readFileTool(filename: string, limit?: number) {
   const fullPath = resolveAbsPath(filename);
   try {
     const file = Bun.file(fullPath);
-    // Check binary by looking for null bytes in first 8KB
     const buf = await file.arrayBuffer();
     const view = new Uint8Array(buf, 0, Math.min(buf.byteLength, 8192));
     const isBinary = view.includes(0);

@@ -1,5 +1,5 @@
-import type { Message } from "./llm.js";
-import { MAX_CONVERSATION_MESSAGES } from "./config.js";
+import type { Message } from "../llm/llm";
+import { MAX_CONVERSATION_MESSAGES } from "./config";
 
 export function pruneMessages(conv: Message[]): Message[] {
   const system = conv.find((m) => m.role === "system");
@@ -9,12 +9,6 @@ export function pruneMessages(conv: Message[]): Message[] {
   return system ? [system, ...pruned] : pruned;
 }
 
-/**
- * Rough token estimate for a set of messages. We do not have a tokenizer in the
- * loop, so we use the common ~4-chars-per-token heuristic plus a small
- * per-message overhead for role framing. This is only used to show the user how
- * much of the context budget is in play, so an approximation is fine.
- */
 export function estimateTokens(conv: Message[]): number {
   let chars = 0;
   for (const m of conv) chars += m.content.length + 4;

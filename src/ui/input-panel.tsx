@@ -1,16 +1,14 @@
 import React, { useMemo } from "react";
 import { Box, Text } from "ink";
-import { MUTED_COLOR, TEXT_COLOR, YOU_COLOR } from "./config.js";
-import { wrapInputToVisualLines } from "./pi-prompt-utils.js";
-import { firstGrapheme } from "./text-segmentation.js";
-import { FillLines } from "./theme.js";
-
+import { MUTED_COLOR, TEXT_COLOR, YOU_COLOR } from "../core/config";
+import { wrapInputToVisualLines } from "../utils/pi-prompt-utils";
+import { firstGrapheme } from "../utils/text-segmentation";
+import { FillLines } from "./theme";
 
 type InputPanelProps = {
   input: string;
   cursorPos: number;
   width: number;
-  /** Number of content rows reserved for the prompt (computed by App). */
   maxVisibleLines: number;
   status: "idle" | "thinking";
 };
@@ -51,9 +49,6 @@ export function InputPanel({ input, cursorPos, width, maxVisibleLines, status }:
 
   const isEmpty = input.length === 0;
 
-  // Each rendered prompt row is painted full-width with the theme background
-  // (leading PADDING_X + prefix + body + trailing filler) so the Gruvbox color
-  // covers the whole prompt box on every terminal, not just under the glyphs.
   const leading = " ".repeat(PADDING_X);
   function renderLine(
     line: { text: string; lineIndex: number; isCursorLine: boolean; cursorOffset: number },
@@ -66,8 +61,6 @@ export function InputPanel({ input, cursorPos, width, maxVisibleLines, status }:
     const fill = (bodyWidth: number) =>
       " ".repeat(Math.max(0, width - PADDING_X - prefix.length - bodyWidth));
 
-    // Empty input: render the prompt + fake cursor (and a placeholder hint when
-    // idle) through the same pipeline so the box never collapses.
     if (isEmpty && isFirst) {
       const hint = isIdle ? "Ask fff to inspect, edit, debug, or build…" : "";
       return (
@@ -85,8 +78,6 @@ export function InputPanel({ input, cursorPos, width, maxVisibleLines, status }:
       );
     }
 
-    // The fake cursor is always rendered (even while streaming) so the cursor
-    // position never disappears mid-response.
     if (line.isCursorLine) {
       const beforeCursor = displayText.slice(0, line.cursorOffset);
       const rest = displayText.slice(line.cursorOffset);
@@ -119,17 +110,12 @@ export function InputPanel({ input, cursorPos, width, maxVisibleLines, status }:
 
   return (
     <Box flexDirection="column" width={width} overflow="hidden">
-      {/* Content lines — empty input flows through the same pipeline so the box
-          never collapses. Height is the dynamic content height computed by App
-          (grows with input up to a small cap) so the prompt stays compact. */}
       <Box flexDirection="column" width={width} height={maxVisibleLines} overflow="hidden">
         {visibleLines.map((line, idx) => (
           <Box key={idx} flexDirection="row" width={width} overflow="hidden">
             {renderLine(line, idx)}
           </Box>
         ))}
-        {/* Pad any unused prompt rows so the themed background fills the whole
-            (fixed-height) content box rather than leaving raw terminal rows. */}
         <FillLines count={Math.max(0, maxVisibleLines - visibleLines.length)} width={width} />
       </Box>
     </Box>

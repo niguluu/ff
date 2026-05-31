@@ -1,11 +1,9 @@
 import OpenAI from "openai";
-import { TOOL_METADATA } from "./tools.js";
+import { TOOL_METADATA } from "../tools/tools";
 
 const API_KEY = process.env.OPENAI_API_KEY ?? "";
 const BASE_URL = process.env.OPENAI_BASE_URL ?? "https://api.deepseek.com/v1";
 export const MODEL = process.env.OPENAI_MODEL ?? "deepseek-v4-flash";
-// Cheapest DeepSeek model — used for the non-interactive codebase indexer where
-// throughput/cost matter more than reasoning depth.
 export const INDEX_MODEL = process.env.FFF_INDEX_MODEL ?? "deepseek-chat";
 const TIMEOUT_MS = Number(process.env.LLM_TIMEOUT_MS ?? "60000");
 const TEMPERATURE = Number(process.env.LLM_TEMPERATURE ?? "0.2");
